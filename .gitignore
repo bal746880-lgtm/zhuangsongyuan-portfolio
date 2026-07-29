@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vite/
+.pnpm-store/
+outputs/
+work/
+.vercel/
+.env
+.env.local
+.env.*.local
+*.log
+public/portfolio/人物完整跑图/跑图总览.mp4

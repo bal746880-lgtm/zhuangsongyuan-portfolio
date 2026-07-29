@@ -1,0 +1,23 @@
+{
+  "name": "xifo-temple-portfolio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "sync:media": "node scripts/sync-media.mjs",
+    "dev": "node scripts/sync-media.mjs && node node_modules/vite/bin/vite.js --configLoader runner",
+    "dev:vite": "node scripts/sync-media.mjs && node node_modules/vite/bin/vite.js --configLoader runner",
+    "build": "node scripts/sync-media.mjs && node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build --configLoader runner && node scripts/prune-build-media.mjs",
+    "preview": "node node_modules/vite/bin/vite.js preview --configLoader runner"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.4"
+  }
+}

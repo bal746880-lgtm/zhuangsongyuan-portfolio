@@ -1,0 +1,40 @@
+标题
+PROJECT OVERVIEW
+从概念原画到实时环境
+
+《西福寺》是一项基于两张概念原画展开的 Unreal Engine 5.7 实时环境项目。我从0到1独立完成了场景规划、玩家路线设计、白盒验证、模块化建筑、程序化材质、植被资产、PCG系统、场景组装、灯光氛围以及最终静帧与动态镜头呈现。
+
+项目首先从原画中提取建筑层级、空间节奏、视线关系、植被分布与秋季氛围，并将二维构图扩展为可探索的连续空间。围绕两条人物跑图路线，我对入口、道路、庭院、桥梁、建筑位置以及前中远景关系进行了规划，并通过白盒阶段反复验证场景尺度、视觉节点与路线节奏。
+
+场景中的建筑、道具与植被资产均采用独立制作流程。建筑部分包含模块规划、模型拆分、UV制作与材质分配；木材、屋瓦、石材和地面等材质主要通过 Substance Designer 从零制作。植被部分覆盖树干与枝叶模型、叶片贴图、顶点数据、SpeedTree组装、Billboard以及UE植被材质。PCG系统用于完成岩石表面的苔藓分布和环境融合。
+
+最终项目在 Unreal Engine 5.7 中完成整体组装、PCG与RVT融合、植被动态、灯光、云雾和后期表现，并以静帧、无人机镜头和人物跑图的形式完成实时展示。
+
+项目信息
+PROJECT              Xifo Temple / 西福寺
+ROLE                 Level Artist · Environment Artist
+ENGINE               Unreal Engine 5.7
+PROJECT TYPE         Personal Project
+PRODUCTION           Full Pipeline
+
+核心职责
+环境规划
+关卡布局
+路线规划
+模块化架构
+UV和材质分配
+程序化材质编写
+植被生成
+PCG系统开发
+布景布置
+灯光和氛围
+最终展示
+
+软件
+Unreal Engine 5.7
+Blender/3D Max
+Substance Designer
+Substance Painter
+SpeedTree
+ZBrush
+Marmoset Toolbag

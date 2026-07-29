@@ -1,0 +1,35 @@
+:root {
+  color-scheme: dark;
+  --color-bg: #121212;
+  --color-bg-elevated: #171717;
+  --color-bg-soft: #151515;
+  --color-text: #f0eee8;
+  --color-text-muted: #aaa8a2;
+  --color-text-faint: #777772;
+  --color-accent: #a9874f;
+  --color-accent-soft: #6e5b38;
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-line-strong: rgba(255, 255, 255, 0.18);
+  --container: 1700px;
+  --page-gutter: clamp(24px, 4vw, 72px);
+  --section-space: clamp(96px, 11vw, 180px);
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 18px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 72px;
+  --space-8: 104px;
+  --font-sans:
+    Inter, "Noto Sans SC", "Source Han Sans SC", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, system-ui, -apple-system,
+    sans-serif;
+  --text-xs: 0.72rem;
+  --text-sm: 0.85rem;
+  --text-base: clamp(0.98rem, 0.4vw + 0.88rem, 1.12rem);
+  --text-lg: clamp(1.2rem, 0.8vw + 1rem, 1.7rem);
+  --text-xl: clamp(2rem, 2vw + 1.2rem, 3.6rem);
+  --text-display: clamp(3rem, 6vw, 7.5rem);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
