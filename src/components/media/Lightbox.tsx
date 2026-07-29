@@ -105,7 +105,15 @@ export function LightboxProvider({ children }: { children: ReactNode }) {
             ←
           </button>
           <figure className="lightbox__figure">
-            <img src={active.url} alt={active.name.replace(/\.[^.]+$/, "")} />
+            <img
+              src={active.src ?? active.url}
+              alt={active.alt ?? active.name.replace(/\.[^.]+$/, "")}
+              loading="lazy"
+              decoding="async"
+              fetchPriority="auto"
+              width={active.width}
+              height={active.height}
+            />
             <figcaption>
               <span>{active.name}</span>
               <span>

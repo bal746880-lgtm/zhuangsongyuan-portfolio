@@ -45,10 +45,13 @@ export function MediaGrid({
             onClick={() => openLightbox(images, index)}
           >
             <img
-              src={image.url}
+              src={image.src ?? image.url}
               alt={`${altPrefix}${imageTitle(image, index)}`}
-              loading={index === 0 && featureFirst ? "eager" : "lazy"}
+              loading="lazy"
               decoding="async"
+              fetchPriority="auto"
+              width={image.width}
+              height={image.height}
             />
           </button>
           {captions ? (

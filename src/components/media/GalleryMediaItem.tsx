@@ -39,12 +39,13 @@ export function createGalleryItems(
 
     return {
       file,
-      src: file.url,
+      src: file.src ?? file.url,
       alt: `${options.altPrefix}${title}`,
       title,
       caption,
       order: file.sortValue ?? index + 1,
       type: file.kind === "video" ? "video" : "image",
+      aspectRatio: file.aspectRatio,
     };
   });
 }
@@ -94,6 +95,9 @@ export function GalleryMediaItem({
           alt={item.alt}
           loading="lazy"
           decoding="async"
+          fetchPriority="auto"
+          width={item.file.width}
+          height={item.file.height}
           onLoad={onMediaLoad}
         />
       )}

@@ -9,9 +9,13 @@ export function HeroSection({ media }: { media?: MediaFolder }) {
       {heroImage ? (
         <img
           className="hero-section__image"
-          src={heroImage.url}
+          src={heroImage.src ?? heroImage.url}
           alt="西福寺项目主视觉"
+          loading="eager"
+          decoding="async"
           fetchPriority="high"
+          width={heroImage.width}
+          height={heroImage.height}
         />
       ) : (
         <div className="hero-section__fallback" aria-hidden="true" />

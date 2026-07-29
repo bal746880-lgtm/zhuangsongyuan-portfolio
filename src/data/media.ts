@@ -4,10 +4,18 @@ export interface MediaFile {
   name: string;
   relativePath: string;
   url: string;
+  src: string;
   extension: string;
   kind: MediaKind;
   sortValue: number | null;
   sizeBytes: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
+  alt?: string;
+  originalPath: string;
+  optimizedPath: string | null;
+  optimizedFormat: "png" | "webp" | null;
 }
 
 export interface MediaFolder {

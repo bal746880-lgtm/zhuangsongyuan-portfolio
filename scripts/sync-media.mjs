@@ -13,6 +13,12 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const desktopRoot = path.join(homedir(), "Desktop");
 const outputRoot = path.join(projectRoot, "public", "portfolio");
+const publicRoot = path.join(projectRoot, "public");
+const optimizationReportPath = path.join(
+  projectRoot,
+  "outputs",
+  "lossless-image-optimization-report.json",
+);
 const legacyProjectName = ["西", "佛", "寺"].join("");
 const currentProjectName = "西福寺";
 
@@ -59,10 +65,107 @@ function getLeadingNumber(name) {
 }
 
 function toPublicUrl(relativePath) {
-  return `/portfolio/${relativePath
+  return `/${relativePath
     .split(path.sep)
     .map((segment) => encodeURIComponent(segment))
     .join("/")}`;
+}
+
+function toSystemPath(projectRelativePath) {
+  return path.join(projectRoot, ...projectRelativePath.split("/"));
+}
+
+function toPosixPath(value) {
+  return value.split(path.sep).join("/");
+}
+
+function toVersionedUrl(filePath) {
+  return stat(filePath).then((fileStats) => {
+    const relativeToPublic = path.relative(publicRoot, filePath);
+    const version = `${fileStats.size}-${Math.round(fileStats.mtimeMs)}`;
+    return {
+      src: `${toPublicUrl(relativeToPublic)}?v=${version}`,
+      path: toPublicUrl(relativeToPublic),
+      stats: fileStats,
+    };
+  });
+}
+
+async function loadOptimizationReport() {
+  try {
+    const report = JSON.parse(
+      await readFile(optimizationReportPath, "utf8"),
+    );
+    return new Map(
+      (report.images ?? []).map((image) => [image.originalPath, image]),
+    );
+  } catch (error) {
+    console.warn(
+      `Lossless optimization report unavailable; original images will be used (${error.message}).`,
+    );
+    return new Map();
+  }
+}
+
+const optimizationEntries = await loadOptimizationReport();
+
+function verifiedCandidateFor(entry, kind) {
+  if (kind === "optimized-png") return entry.optimizedPng;
+  if (kind === "lossless-webp") return entry.losslessWebp;
+  return null;
+}
+
+async function selectImageAsset(destination, originalProjectPath) {
+  const originalVersion = await toVersionedUrl(destination);
+  const reportEntry = optimizationEntries.get(originalProjectPath);
+  const fallback = {
+    ...originalVersion,
+    width: reportEntry?.width,
+    height: reportEntry?.height,
+    aspectRatio:
+      reportEntry?.width && reportEntry?.height
+        ? reportEntry.width / reportEntry.height
+        : undefined,
+    optimizedPath: null,
+    optimizedFormat: null,
+  };
+
+  if (
+    !reportEntry ||
+    reportEntry.originalSizeBytes !== originalVersion.stats.size
+  ) {
+    return fallback;
+  }
+
+  const selection = reportEntry.smallestLosslessVersion;
+  if (!selection || selection.kind === "original") return fallback;
+
+  const candidate = verifiedCandidateFor(reportEntry, selection.kind);
+  if (
+    !candidate?.retained ||
+    candidate.status !== "retained" ||
+    candidate.validation?.passed !== true ||
+    candidate.outputPath !== selection.path
+  ) {
+    return fallback;
+  }
+
+  try {
+    const selectedPath = toSystemPath(selection.path);
+    const selectedVersion = await toVersionedUrl(selectedPath);
+    if (selectedVersion.stats.size !== selection.sizeBytes) return fallback;
+
+    return {
+      ...selectedVersion,
+      width: reportEntry.width,
+      height: reportEntry.height,
+      aspectRatio: reportEntry.width / reportEntry.height,
+      optimizedPath: selectedVersion.path,
+      optimizedFormat: selection.format,
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 async function copyIfChanged(source, destination, kind) {
@@ -138,16 +241,41 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     const destination = path.join(destinationChapter, relativeToChapter);
     const sourceStats = await copyIfChanged(sourcePath, destination, kind);
     const publicRelative = path.join(path.basename(chapterRoot), relativeToChapter);
-    const version = `${sourceStats.size}-${Math.round(sourceStats.mtimeMs)}`;
+    const originalProjectPath = toPosixPath(
+      path.join("public", "portfolio", publicRelative),
+    );
+    const originalPath = toPublicUrl(
+      path.join("portfolio", publicRelative),
+    );
+    const selected =
+      kind === "image"
+        ? await selectImageAsset(destination, originalProjectPath)
+        : await toVersionedUrl(destination);
+    const imageMetadata =
+      kind === "image"
+        ? {
+            width: selected.width,
+            height: selected.height,
+            aspectRatio: selected.aspectRatio,
+            alt: entry.name.replace(/\.[^.]+$/, ""),
+          }
+        : {};
 
     folder.files.push({
       name: entry.name,
       relativePath: relativeToChapter,
-      url: `${toPublicUrl(publicRelative)}?v=${version}`,
-      extension,
+      url: selected.src,
+      src: selected.src,
+      extension:
+        kind === "image" ? path.extname(selected.path).toLowerCase() : extension,
       kind,
       sortValue: getLeadingNumber(entry.name),
-      sizeBytes: sourceStats.size,
+      sizeBytes: selected.stats.size,
+      ...imageMetadata,
+      originalPath,
+      optimizedPath: selected.optimizedPath ?? null,
+      optimizedFormat: selected.optimizedFormat ?? null,
+      originalSizeBytes: sourceStats.size,
     });
   }
 
@@ -175,27 +303,17 @@ for (const chapter of chapterFolders) {
       destinationChapter,
     );
   } catch {
-    manifest.missingChapters.push(chapter);
-  }
-}
-
-if (Object.keys(manifest.chapters).length === 0) {
-  try {
-    const existingManifest = JSON.parse(
-      await readFile(path.join(outputRoot, "manifest.json"), "utf8"),
-    );
-    const existingChapterCount = Object.keys(
-      existingManifest.chapters ?? {},
-    ).length;
-
-    if (existingChapterCount > 0) {
-      console.log(
-        `Desktop media unavailable; using ${existingChapterCount} existing public chapters.`,
+    try {
+      const existingStats = await stat(destinationChapter);
+      if (!existingStats.isDirectory()) throw new Error("not a directory");
+      manifest.chapters[chapter] = await scanFolder(
+        destinationChapter,
+        destinationChapter,
+        destinationChapter,
       );
-      process.exit(0);
+    } catch {
+      manifest.missingChapters.push(chapter);
     }
-  } catch {
-    // Continue and write the missing chapter report when no fallback exists.
   }
 }
 

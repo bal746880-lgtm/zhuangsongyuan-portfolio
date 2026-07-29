@@ -32,10 +32,13 @@ export function AboutSection({ media }: { media?: MediaFolder }) {
             >
               {portrait ? (
                 <img
-                  src={portrait.url}
+                  src={portrait.src ?? portrait.url}
                   alt="庄松源个人照片"
                   loading="lazy"
                   decoding="async"
+                  fetchPriority="auto"
+                  width={portrait.width}
+                  height={portrait.height}
                 />
               ) : (
                 <div className="about-experience__portrait-placeholder">

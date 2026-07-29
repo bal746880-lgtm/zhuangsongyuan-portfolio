@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "./BilibiliPlayer.css";
 
 interface BilibiliPlayerProps {
@@ -13,18 +14,32 @@ export function BilibiliPlayer({
   title,
   description,
 }: BilibiliPlayerProps) {
+  const [isActivated, setIsActivated] = useState(false);
+
   return (
     <figure className="video-frame bilibili-player">
       <div className="video-frame__media bilibili-player__media">
-        <iframe
-          src={embedUrl}
-          title="西福寺人物完整跑图"
-          loading="lazy"
-          scrolling="no"
-          frameBorder="0"
-          allowFullScreen
-          allow="autoplay; fullscreen; picture-in-picture"
-        />
+        {isActivated ? (
+          <iframe
+            src={embedUrl}
+            title="西福寺人物完整跑图"
+            loading="lazy"
+            scrolling="no"
+            frameBorder="0"
+            allowFullScreen
+            allow="autoplay; fullscreen; picture-in-picture"
+          />
+        ) : (
+          <button
+            className="video-frame__activation bilibili-player__activation"
+            type="button"
+            aria-label="播放西福寺人物完整跑图"
+            onClick={() => setIsActivated(true)}
+          >
+            <span className="video-frame__play-icon" aria-hidden="true" />
+            <span>播放完整跑图</span>
+          </button>
+        )}
       </div>
       <figcaption>
         <div>
