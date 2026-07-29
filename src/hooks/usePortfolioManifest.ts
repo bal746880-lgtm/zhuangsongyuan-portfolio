@@ -23,6 +23,15 @@ function normalizeFile(file: MediaFile): MediaFile {
     originalPath: file.originalPath ?? src,
     optimizedPath: file.optimizedPath ?? null,
     optimizedFormat: file.optimizedFormat ?? null,
+    displayVariants: file.displayVariants ?? [],
+    lightboxSrc: file.lightboxSrc ?? src,
+    lightboxWidth: file.lightboxWidth ?? file.width,
+    lightboxHeight: file.lightboxHeight ?? file.height,
+    losslessPath: file.losslessPath ?? file.optimizedPath ?? file.originalPath,
+    q92Path: file.q92Path ?? null,
+    quality: file.quality ?? null,
+    fileSize: file.fileSize ?? file.sizeBytes,
+    isDisplayed: file.isDisplayed ?? true,
   };
 }
 

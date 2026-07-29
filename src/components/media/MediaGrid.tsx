@@ -2,6 +2,7 @@ import type { MediaFile } from "../../data/media";
 import { imageTitle } from "../../utils/mediaHelpers";
 import { sortByLeadingNumber } from "../../utils/mediaSort";
 import { useLightbox } from "./Lightbox";
+import { ResponsiveImage } from "./ResponsiveImage";
 
 interface MediaGridProps {
   items: readonly MediaFile[];
@@ -44,14 +45,9 @@ export function MediaGrid({
             aria-label={`放大查看：${altPrefix}${imageTitle(image, index)}`}
             onClick={() => openLightbox(images, index)}
           >
-            <img
-              src={image.src ?? image.url}
+            <ResponsiveImage
+              file={image}
               alt={`${altPrefix}${imageTitle(image, index)}`}
-              loading="lazy"
-              decoding="async"
-              fetchPriority="auto"
-              width={image.width}
-              height={image.height}
             />
           </button>
           {captions ? (

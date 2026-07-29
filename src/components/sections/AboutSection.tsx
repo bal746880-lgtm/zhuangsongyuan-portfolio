@@ -7,6 +7,7 @@ import {
 import type { MediaFolder } from "../../data/media";
 import { imagesIn } from "../../utils/mediaHelpers";
 import { CareerTimeline } from "../about/CareerTimeline";
+import { ResponsiveImage } from "../media/ResponsiveImage";
 import { SectionHeader } from "../ui/SectionHeader";
 import "../about/AboutExperience.css";
 
@@ -31,14 +32,9 @@ export function AboutSection({ media }: { media?: MediaFolder }) {
               }`}
             >
               {portrait ? (
-                <img
-                  src={portrait.src ?? portrait.url}
+                <ResponsiveImage
+                  file={portrait}
                   alt="庄松源个人照片"
-                  loading="lazy"
-                  decoding="async"
-                  fetchPriority="auto"
-                  width={portrait.width}
-                  height={portrait.height}
                 />
               ) : (
                 <div className="about-experience__portrait-placeholder">

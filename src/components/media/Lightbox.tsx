@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { MediaFile } from "../../data/media";
+import { ResponsiveImage } from "./ResponsiveImage";
 
 interface LightboxState {
   items: MediaFile[];
@@ -105,14 +106,15 @@ export function LightboxProvider({ children }: { children: ReactNode }) {
             ←
           </button>
           <figure className="lightbox__figure">
-            <img
-              src={active.src ?? active.url}
+            <ResponsiveImage
+              key={`${active.relativePath}-${active.lightboxSrc ?? active.src}`}
+              file={active}
+              sourceOverride={active.lightboxSrc ?? active.src ?? active.url}
+              widthOverride={active.lightboxWidth ?? active.width}
+              heightOverride={active.lightboxHeight ?? active.height}
               alt={active.alt ?? active.name.replace(/\.[^.]+$/, "")}
-              loading="lazy"
-              decoding="async"
-              fetchPriority="auto"
-              width={active.width}
-              height={active.height}
+              forceActive
+              observeViewport={false}
             />
             <figcaption>
               <span>{active.name}</span>

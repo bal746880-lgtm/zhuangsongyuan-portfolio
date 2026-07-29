@@ -3,6 +3,7 @@ import type { GalleryLayoutVariant } from "../../data/galleryLayouts";
 import { imageTitle } from "../../utils/mediaHelpers";
 import { sortByLeadingNumber } from "../../utils/mediaSort";
 import { useLightbox } from "./Lightbox";
+import { ResponsiveImage } from "./ResponsiveImage";
 
 export interface GalleryItem {
   file: MediaFile;
@@ -59,6 +60,7 @@ interface GalleryMediaItemProps {
   showIndex: boolean;
   mode: "single" | "equal-row" | "horizontal";
   onMediaLoad?: () => void;
+  shouldLoad?: boolean;
 }
 
 export function GalleryMediaItem({
@@ -70,6 +72,7 @@ export function GalleryMediaItem({
   showIndex,
   mode,
   onMediaLoad,
+  shouldLoad,
 }: GalleryMediaItemProps) {
   const { openLightbox } = useLightbox();
   const lightboxItems = items
@@ -90,14 +93,11 @@ export function GalleryMediaItem({
           onLoadedMetadata={onMediaLoad}
         />
       ) : (
-        <img
-          src={item.src}
+        <ResponsiveImage
+          file={item.file}
           alt={item.alt}
-          loading="lazy"
-          decoding="async"
-          fetchPriority="auto"
-          width={item.file.width}
-          height={item.file.height}
+          forceActive={shouldLoad ?? false}
+          observeViewport={shouldLoad === undefined}
           onLoad={onMediaLoad}
         />
       )}

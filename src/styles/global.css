@@ -147,6 +147,10 @@ ul {
   contain-intrinsic-size: auto 1600px;
 }
 
+.content-section.content-section--anchor-visible {
+  content-visibility: visible;
+}
+
 .content-section + .content-section {
   border-top: 1px solid var(--color-line);
 }

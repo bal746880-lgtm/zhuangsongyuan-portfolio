@@ -1,5 +1,14 @@
 export type MediaKind = "image" | "video" | "text" | "other";
 
+export interface MediaImageVariant {
+  src: string;
+  width: number;
+  height: number;
+  fileSize: number;
+  quality: number | null;
+  format: string;
+}
+
 export interface MediaFile {
   name: string;
   relativePath: string;
@@ -16,6 +25,19 @@ export interface MediaFile {
   originalPath: string;
   optimizedPath: string | null;
   optimizedFormat: "png" | "webp" | null;
+  srcSet?: string;
+  sizes?: string;
+  losslessPath?: string | null;
+  q92Path?: string | null;
+  displayVariants?: MediaImageVariant[];
+  lightboxSrc?: string;
+  lightboxWidth?: number;
+  lightboxHeight?: number;
+  imageCategory?: "A" | "B" | "C" | "D";
+  sectionId?: string;
+  quality?: number | null;
+  fileSize?: number;
+  isDisplayed?: boolean;
 }
 
 export interface MediaFolder {

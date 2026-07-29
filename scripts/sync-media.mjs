@@ -19,6 +19,11 @@ const optimizationReportPath = path.join(
   "outputs",
   "lossless-image-optimization-report.json",
 );
+const q92ReportPath = path.join(
+  projectRoot,
+  "outputs",
+  "q92-image-optimization-report.json",
+);
 const legacyProjectName = ["西", "佛", "寺"].join("");
 const currentProjectName = "西福寺";
 
@@ -109,6 +114,22 @@ async function loadOptimizationReport() {
 
 const optimizationEntries = await loadOptimizationReport();
 
+async function loadQ92Report() {
+  try {
+    const report = JSON.parse(await readFile(q92ReportPath, "utf8"));
+    return new Map(
+      (report.images ?? []).map((image) => [image.originalPath, image]),
+    );
+  } catch {
+    console.warn(
+      "Q92 responsive report unavailable; verified lossless images will be used.",
+    );
+    return new Map();
+  }
+}
+
+const q92Entries = await loadQ92Report();
+
 function verifiedCandidateFor(entry, kind) {
   if (kind === "optimized-png") return entry.optimizedPng;
   if (kind === "lossless-webp") return entry.losslessWebp;
@@ -166,6 +187,93 @@ async function selectImageAsset(destination, originalProjectPath) {
   } catch {
     return fallback;
   }
+}
+
+function projectPathToPublicUrl(projectPath) {
+  return toPublicUrl(
+    path.relative(publicRoot, toSystemPath(projectPath)),
+  );
+}
+
+async function versionResponsiveVariant(variant) {
+  const versioned = await toVersionedUrl(toSystemPath(variant.path));
+  if (versioned.stats.size !== variant.fileSize) {
+    throw new Error(`Responsive variant size changed: ${variant.path}`);
+  }
+  return {
+    src: versioned.src,
+    path: versioned.path,
+    width: variant.width,
+    height: variant.height,
+    fileSize: variant.fileSize,
+    quality: variant.quality,
+    format: variant.format,
+  };
+}
+
+async function selectResponsiveAsset(originalProjectPath) {
+  const reportEntry = q92Entries.get(originalProjectPath);
+  if (!reportEntry) return null;
+
+  try {
+    const variants = [];
+    for (const variant of reportEntry.displayVariants ?? []) {
+      variants.push(await versionResponsiveVariant(variant));
+    }
+    if (variants.length === 0) return null;
+
+    const defaultVariant =
+      variants.find(
+        (variant) => variant.path === projectPathToPublicUrl(
+          reportEntry.defaultVariant.path,
+        ),
+      ) ?? variants[0];
+    const lightboxVariant =
+      variants.find(
+        (variant) => variant.path === projectPathToPublicUrl(
+          reportEntry.lightboxVariant.path,
+        ),
+      ) ?? variants.at(-1);
+
+    return {
+      defaultVariant,
+      displayVariants: variants,
+      srcSet: variants
+        .map((variant) => `${variant.src} ${variant.width}w`)
+        .join(", "),
+      sizes: reportEntry.sizes,
+      lightboxVariant,
+      losslessPath: reportEntry.losslessPath,
+      q92Path: defaultVariant.path,
+      imageCategory: reportEntry.imageCategory,
+      sectionId: reportEntry.sectionId,
+      quality: reportEntry.quality,
+    };
+  } catch (error) {
+    console.warn(
+      `Responsive variants unavailable for ${originalProjectPath}: ${error.message}`,
+    );
+    return null;
+  }
+}
+
+function isDisplayedAsset(kind, originalProjectPath) {
+  if (
+    kind === "image" &&
+    originalProjectPath.includes(
+      "public/portfolio/植被全流程与Billboard制作/",
+    ) &&
+    /\/8_.+\/3\.png$/i.test(originalProjectPath)
+  ) {
+    return false;
+  }
+
+  return !(
+    kind === "video" &&
+    /public\/portfolio\/人物完整跑图\/跑图总览\.mp4$/i.test(
+      originalProjectPath,
+    )
+  );
 }
 
 async function copyIfChanged(source, destination, kind) {
@@ -247,17 +355,57 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     const originalPath = toPublicUrl(
       path.join("portfolio", publicRelative),
     );
-    const selected =
+    const losslessSelected =
       kind === "image"
         ? await selectImageAsset(destination, originalProjectPath)
         : await toVersionedUrl(destination);
+    const responsiveSelected =
+      kind === "image"
+        ? await selectResponsiveAsset(originalProjectPath)
+        : null;
+    const selected =
+      responsiveSelected?.defaultVariant ?? losslessSelected;
+    const fallbackVariant =
+      kind === "image"
+        ? {
+            src: losslessSelected.src,
+            path: losslessSelected.path,
+            width: losslessSelected.width,
+            height: losslessSelected.height,
+            fileSize: losslessSelected.stats.size,
+            quality: null,
+            format: path.extname(losslessSelected.path).replace(/^\./, ""),
+          }
+        : null;
+    const displayVariants =
+      responsiveSelected?.displayVariants ??
+      (fallbackVariant ? [fallbackVariant] : []);
+    const lightboxVariant =
+      responsiveSelected?.lightboxVariant ?? fallbackVariant;
     const imageMetadata =
       kind === "image"
         ? {
-            width: selected.width,
-            height: selected.height,
-            aspectRatio: selected.aspectRatio,
+            width: losslessSelected.width,
+            height: losslessSelected.height,
+            aspectRatio: losslessSelected.aspectRatio,
             alt: entry.name.replace(/\.[^.]+$/, ""),
+            srcSet:
+              responsiveSelected?.srcSet ??
+              `${losslessSelected.src} ${losslessSelected.width}w`,
+            sizes: responsiveSelected?.sizes ?? "100vw",
+            losslessPath:
+              responsiveSelected?.losslessPath ?? losslessSelected.path,
+            q92Path: responsiveSelected?.q92Path ?? null,
+            displayVariants,
+            lightboxSrc: lightboxVariant?.src ?? selected.src,
+            lightboxWidth:
+              lightboxVariant?.width ?? losslessSelected.width,
+            lightboxHeight:
+              lightboxVariant?.height ?? losslessSelected.height,
+            imageCategory: responsiveSelected?.imageCategory,
+            sectionId: responsiveSelected?.sectionId,
+            quality: responsiveSelected?.quality ?? null,
+            fileSize: selected.stats?.size ?? selected.fileSize,
           }
         : {};
 
@@ -270,11 +418,12 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
         kind === "image" ? path.extname(selected.path).toLowerCase() : extension,
       kind,
       sortValue: getLeadingNumber(entry.name),
-      sizeBytes: selected.stats.size,
+      sizeBytes: selected.stats?.size ?? selected.fileSize,
       ...imageMetadata,
+      isDisplayed: isDisplayedAsset(kind, originalProjectPath),
       originalPath,
-      optimizedPath: selected.optimizedPath ?? null,
-      optimizedFormat: selected.optimizedFormat ?? null,
+      optimizedPath: losslessSelected.optimizedPath ?? null,
+      optimizedFormat: losslessSelected.optimizedFormat ?? null,
       originalSizeBytes: sourceStats.size,
     });
   }

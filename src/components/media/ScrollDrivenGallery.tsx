@@ -49,6 +49,7 @@ export function ScrollDrivenGallery({
   enableLightbox = true,
   className = "",
 }: ScrollDrivenGalleryProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -64,6 +65,7 @@ export function ScrollDrivenGallery({
   });
   const [isScrollDriven, setIsScrollDriven] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isSectionActive, setIsSectionActive] = useState(false);
 
   const style: GalleryStyle = {
     "--gallery-media-height": maxMediaHeight,
@@ -129,7 +131,8 @@ export function ScrollDrivenGallery({
     if (
       !isScrollDriven ||
       items.length <= 1 ||
-      isSnapSuppressedRef.current
+      isSnapSuppressedRef.current ||
+      document.documentElement.dataset.anchorNavigation === "true"
     ) {
       return;
     }
@@ -208,6 +211,26 @@ export function ScrollDrivenGallery({
     };
     scheduleDesktopUpdate();
   }, [isScrollDriven, items.length, scheduleDesktopUpdate]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (!("IntersectionObserver" in window)) {
+      setIsSectionActive(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setIsSectionActive(true);
+        observer.disconnect();
+      },
+      { rootMargin: "900px 0px" },
+    );
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const desktop = window.matchMedia(DESKTOP_QUERY);
@@ -346,6 +369,7 @@ export function ScrollDrivenGallery({
 
   return (
     <div
+      ref={containerRef}
       className={`scroll-driven-gallery ${
         isScrollDriven ? "scroll-driven-gallery--active" : ""
       } scroll-driven-gallery--${layoutVariant} ${className}`}
@@ -384,6 +408,9 @@ export function ScrollDrivenGallery({
                 showIndex={showIndex}
                 mode="horizontal"
                 onMediaLoad={recalculate}
+                shouldLoad={
+                  isSectionActive && Math.abs(index - activeIndex) <= 1
+                }
               />
             ))}
           </div>

@@ -1,4 +1,4 @@
-import { readFile, readdir, rm, stat } from "node:fs/promises";
+import { readFile, readdir, rm, rmdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -69,12 +69,44 @@ async function walkFiles(directory) {
   return files;
 }
 
+async function removeEmptyDirectories(directory, removeRoot = true) {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+
+  let removedDirectories = 0;
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    removedDirectories += await removeEmptyDirectories(
+      path.join(directory, entry.name),
+    );
+  }
+
+  const remainingEntries = await readdir(directory);
+  if (removeRoot && remainingEntries.length === 0) {
+    assertInsideDist(directory);
+    await rmdir(directory);
+    removedDirectories += 1;
+  }
+
+  return removedDirectories;
+}
+
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const manifestFiles = Object.values(manifest.chapters ?? {}).flatMap(flattenFiles);
 const selectedImages = new Set(
   manifestFiles
-    .filter((file) => file.kind === "image")
-    .map((file) => distPathFromUrl(file.src ?? file.url)),
+    .filter(
+      (file) => file.kind === "image" && file.isDisplayed !== false,
+    )
+    .flatMap((file) => [
+      ...(file.displayVariants ?? []).map((variant) => variant.src),
+      file.lightboxSrc ?? file.src ?? file.url,
+    ])
+    .map(distPathFromUrl),
 );
 
 for (const selectedImage of selectedImages) {
@@ -91,6 +123,7 @@ for (const selectedImage of selectedImages) {
 const candidateRoots = [
   path.join(distRoot, "portfolio"),
   path.join(distRoot, "portfolio-optimized-lossless"),
+  path.join(distRoot, "portfolio-optimized-q92"),
 ];
 const imageCandidates = (
   await Promise.all(candidateRoots.map(walkFiles))
@@ -112,6 +145,14 @@ for (const candidate of imageCandidates) {
 assertInsideDist(excludedWalkthrough);
 await rm(excludedWalkthrough, { force: true });
 
+const removedEmptyDirectories = (
+  await Promise.all(
+    candidateRoots.map((directory) =>
+      removeEmptyDirectories(directory, directory !== path.join(distRoot, "portfolio")),
+    ),
+  )
+).reduce((total, count) => total + count, 0);
+
 console.log(
-  `Build media pruned: kept ${selectedImages.size} selected images, removed ${removedImageVariants} unused image variants, and excluded the local walkthrough MP4.`,
+  `Build media pruned: kept ${selectedImages.size} selected images, removed ${removedImageVariants} unused image variants and ${removedEmptyDirectories} empty media directories, and excluded the local walkthrough MP4.`,
 );
