@@ -26,6 +26,7 @@ const q92ReportPath = path.join(
 );
 const legacyProjectName = ["西", "佛", "寺"].join("");
 const currentProjectName = "西福寺";
+const activeDroneVideoName = "无人机2.mp4";
 
 const chapterFolders = [
   "主视觉封面",
@@ -270,9 +271,7 @@ function isDisplayedAsset(kind, originalProjectPath) {
 
   return !(
     kind === "video" &&
-    /public\/portfolio\/人物完整跑图\/跑图总览\.mp4$/i.test(
-      originalProjectPath,
-    )
+    originalProjectPath.includes("public/portfolio/人物完整跑图/")
   );
 }
 
@@ -345,6 +344,13 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     const extension = path.extname(entry.name).toLowerCase();
     const kind = getKind(extension);
     if (kind === "other") continue;
+    if (
+      kind === "video" &&
+      path.basename(chapterRoot) === "无人机" &&
+      entry.name !== activeDroneVideoName
+    ) {
+      continue;
+    }
 
     const destination = path.join(destinationChapter, relativeToChapter);
     const sourceStats = await copyIfChanged(sourcePath, destination, kind);

@@ -8,12 +8,6 @@ const projectRoot = path.resolve(
 );
 const distRoot = path.join(projectRoot, "dist");
 const manifestPath = path.join(distRoot, "portfolio", "manifest.json");
-const excludedWalkthrough = path.join(
-  distRoot,
-  "portfolio",
-  "人物完整跑图",
-  "跑图总览.mp4",
-);
 const imageExtensions = new Set([
   ".png",
   ".jpg",
@@ -24,6 +18,7 @@ const imageExtensions = new Set([
   ".tif",
   ".tiff",
 ]);
+const videoExtensions = new Set([".mp4", ".mov", ".m4v", ".webm"]);
 
 function assertInsideDist(filePath) {
   if (
@@ -108,15 +103,26 @@ const selectedImages = new Set(
     ])
     .map(distPathFromUrl),
 );
+const selectedVideos = new Set(
+  manifestFiles
+    .filter(
+      (file) => file.kind === "video" && file.isDisplayed !== false,
+    )
+    .map((file) => file.src ?? file.url)
+    .map(distPathFromUrl),
+);
 
-for (const selectedImage of selectedImages) {
-  try {
-    const selectedStats = await stat(selectedImage);
-    if (!selectedStats.isFile()) throw new Error("not a file");
-  } catch {
-    throw new Error(
-      `Selected lossless image is missing from dist: ${selectedImage}`,
-    );
+for (const [label, selectedFiles] of [
+  ["image", selectedImages],
+  ["video", selectedVideos],
+]) {
+  for (const selectedFile of selectedFiles) {
+    try {
+      const selectedStats = await stat(selectedFile);
+      if (!selectedStats.isFile()) throw new Error("not a file");
+    } catch {
+      throw new Error(`Selected ${label} is missing from dist: ${selectedFile}`);
+    }
   }
 }
 
@@ -142,8 +148,17 @@ for (const candidate of imageCandidates) {
   removedImageVariants += 1;
 }
 
-assertInsideDist(excludedWalkthrough);
-await rm(excludedWalkthrough, { force: true });
+const videoCandidates = (await walkFiles(path.join(distRoot, "portfolio"))).filter(
+  (filePath) => videoExtensions.has(path.extname(filePath).toLowerCase()),
+);
+let removedUnusedVideos = 0;
+for (const candidate of videoCandidates) {
+  const normalized = path.normalize(candidate);
+  if (selectedVideos.has(normalized)) continue;
+  assertInsideDist(normalized);
+  await rm(normalized, { force: true });
+  removedUnusedVideos += 1;
+}
 
 const removedEmptyDirectories = (
   await Promise.all(
@@ -154,5 +169,5 @@ const removedEmptyDirectories = (
 ).reduce((total, count) => total + count, 0);
 
 console.log(
-  `Build media pruned: kept ${selectedImages.size} selected images, removed ${removedImageVariants} unused image variants and ${removedEmptyDirectories} empty media directories, and excluded the local walkthrough MP4.`,
+  `Build media pruned: kept ${selectedImages.size} selected images and ${selectedVideos.size} selected video, removed ${removedImageVariants} unused image variants, ${removedUnusedVideos} unused videos, and ${removedEmptyDirectories} empty media directories.`,
 );

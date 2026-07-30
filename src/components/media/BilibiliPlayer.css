@@ -6,7 +6,7 @@
   width: 100%;
   max-width: 100%;
   max-height: 80vh;
-  aspect-ratio: 22 / 9;
+  aspect-ratio: 16 / 9;
 }
 
 .bilibili-player__media iframe {
@@ -38,7 +38,7 @@
 
 @media (max-width: 1199px) and (orientation: landscape) and (max-height: 700px) {
   .bilibili-player__media {
-    width: min(100%, 195.556vh);
+    width: min(100%, 177.778vh);
     margin-inline: auto;
   }
 }

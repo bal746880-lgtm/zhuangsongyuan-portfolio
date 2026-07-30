@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-29T18:06:34.398Z",
+  "generatedAt": "2026-07-30T08:29:33.922Z",
   "chapters": {
     "主视觉封面": {
       "name": "主视觉封面",
@@ -463,19 +463,19 @@
       "sortValue": null,
       "files": [
         {
-          "name": "无人机.mp4",
-          "relativePath": "无人机.mp4",
-          "url": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA.mp4?v=55721680-1785070465228",
-          "src": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA.mp4?v=55721680-1785070465228",
+          "name": "无人机2.mp4",
+          "relativePath": "无人机2.mp4",
+          "url": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4?v=68555536-1785379580703",
+          "src": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4?v=68555536-1785379580703",
           "extension": ".mp4",
           "kind": "video",
           "sortValue": null,
-          "sizeBytes": 55721680,
+          "sizeBytes": 68555536,
           "isDisplayed": true,
-          "originalPath": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA.mp4",
+          "originalPath": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4",
           "optimizedPath": null,
           "optimizedFormat": null,
-          "originalSizeBytes": 55721680
+          "originalSizeBytes": 68555536
         }
       ],
       "children": []
@@ -4116,6 +4116,21 @@
       "relativePath": "",
       "sortValue": null,
       "files": [
+        {
+          "name": "7月30日 (2).mp4",
+          "relativePath": "7月30日 (2).mp4",
+          "url": "/portfolio/%E4%BA%BA%E7%89%A9%E5%AE%8C%E6%95%B4%E8%B7%91%E5%9B%BE/7%E6%9C%8830%E6%97%A5%20(2).mp4?v=233889166-1785387167731",
+          "src": "/portfolio/%E4%BA%BA%E7%89%A9%E5%AE%8C%E6%95%B4%E8%B7%91%E5%9B%BE/7%E6%9C%8830%E6%97%A5%20(2).mp4?v=233889166-1785387167731",
+          "extension": ".mp4",
+          "kind": "video",
+          "sortValue": 7,
+          "sizeBytes": 233889166,
+          "isDisplayed": false,
+          "originalPath": "/portfolio/%E4%BA%BA%E7%89%A9%E5%AE%8C%E6%95%B4%E8%B7%91%E5%9B%BE/7%E6%9C%8830%E6%97%A5%20(2).mp4",
+          "optimizedPath": null,
+          "optimizedFormat": null,
+          "originalSizeBytes": 233889166
+        },
         {
           "name": "跑图总览.mp4",
           "relativePath": "跑图总览.mp4",

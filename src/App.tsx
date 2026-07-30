@@ -16,6 +16,7 @@ import { WalkthroughSection } from "./components/sections/WalkthroughSection";
 import { chapterFolderNames, getChapter } from "./data/media";
 import { usePortfolioManifest } from "./hooks/usePortfolioManifest";
 import { useRevealOnScroll } from "./hooks/useRevealOnScroll";
+import { PortfolioPdfView } from "./print/PortfolioPdfView";
 
 function LoadingState() {
   return (
@@ -40,10 +41,13 @@ function ErrorState({ message }: { message: string }) {
 
 export default function App() {
   const { manifest, error } = usePortfolioManifest();
-  useRevealOnScroll(Boolean(manifest && !error));
+  const isPdfMode =
+    new URLSearchParams(window.location.search).get("portfolioPdf") === "1";
+  useRevealOnScroll(Boolean(manifest && !error && !isPdfMode));
 
   if (error) return <ErrorState message={error} />;
   if (!manifest) return <LoadingState />;
+  if (isPdfMode) return <PortfolioPdfView manifest={manifest} />;
 
   return (
     <LightboxProvider>

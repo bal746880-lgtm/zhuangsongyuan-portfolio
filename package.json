@@ -9,6 +9,8 @@
     "media:lossless": "node scripts/optimize-images-lossless.mjs",
     "media:verify": "node scripts/verify-lossless-images.mjs",
     "media:q92": "node scripts/optimize-images-q92.mjs",
+    "portfolio:pdf": "node scripts/export-portfolio-pdf.mjs",
+    "portfolio:pdf:email": "node scripts/export-portfolio-pdf.mjs --email-high-quality",
     "dev": "node scripts/sync-media.mjs && node node_modules/vite/bin/vite.js --configLoader runner",
     "dev:vite": "node scripts/sync-media.mjs && node node_modules/vite/bin/vite.js --configLoader runner",
     "build": "node scripts/sync-media.mjs && node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build --configLoader runner && node scripts/prune-build-media.mjs",
@@ -21,6 +23,7 @@
   "devDependencies": {
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "puppeteer-core": "^25.4.0",
     "typescript": "^5.8.3",
     "vite": "^7.0.4"
   }
