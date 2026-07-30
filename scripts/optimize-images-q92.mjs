@@ -49,45 +49,52 @@ if (onlyPrefix && !onlyPrefix.startsWith("public/portfolio/")) {
 
 const roleSettings = {
   hero: {
-    widths: [960, 1440, 1920, 2560],
-    preferredWidth: 1920,
+    widths: [768, 960, 1440, 1920],
+    preferredWidth: 960,
     mobileWidth: 960,
     sizes: "100vw",
   },
   portrait: {
-    widths: [480, 960, 1600],
+    widths: [480, 640, 960],
     preferredWidth: 480,
     mobileWidth: 480,
     sizes:
       "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) 42vw, 390px",
   },
   full: {
-    widths: [960, 1600, 2560],
-    preferredWidth: 1600,
+    widths: [960, 1440, 1920],
+    preferredWidth: 960,
     mobileWidth: 960,
     sizes:
-      "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) calc(100vw - 64px), min(94vw, 1700px)",
+      "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) calc(100vw - 64px), min(1700px, calc(100vw - 96px))",
   },
   horizontal: {
-    widths: [800, 1440, 2200],
-    preferredWidth: 1440,
+    widths: [800, 1200, 1440],
+    preferredWidth: 800,
     mobileWidth: 800,
     sizes:
       "(max-width: 767px) 90vw, (max-width: 1199px) 82vw, min(78vw, 1480px)",
   },
+  technicalHorizontal: {
+    widths: [960, 1440, 1920],
+    preferredWidth: 960,
+    mobileWidth: 960,
+    sizes:
+      "(max-width: 767px) 90vw, (max-width: 1199px) 82vw, min(78vw, 1480px)",
+  },
   double: {
-    widths: [640, 1200, 1920],
-    preferredWidth: 1200,
+    widths: [640, 960, 1200],
+    preferredWidth: 640,
     mobileWidth: 640,
     sizes:
-      "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) 48vw, min(48vw, 780px)",
+      "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) 46vw, min(820px, 46vw)",
   },
   triple: {
-    widths: [480, 960, 1600],
-    preferredWidth: 960,
+    widths: [480, 640, 960],
+    preferredWidth: 480,
     mobileWidth: 480,
     sizes:
-      "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) 48vw, min(32vw, 520px)",
+      "(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) 46vw, min(540px, 31vw)",
   },
 };
 
@@ -217,14 +224,16 @@ function classifyUsage(chapterName, file) {
     return {
       sectionId: "materials-sd",
       imageCategory: "C",
-      displayRole: "horizontal",
+      displayRole: "technicalHorizontal",
     };
   }
   if (chapterName === "岩石苔藓PCG系统") {
+    const imageCategory = (sortValue ?? 0) <= 6 ? "C" : "A";
     return {
       sectionId: "pcg",
-      imageCategory: (sortValue ?? 0) <= 6 ? "C" : "A",
-      displayRole: "horizontal",
+      imageCategory,
+      displayRole:
+        imageCategory === "C" ? "technicalHorizontal" : "horizontal",
     };
   }
   if (chapterName === "场景静帧") {
@@ -722,17 +731,23 @@ for (const [index, entry] of entriesToProcess.entries()) {
   });
   const selectedVariants = encoded.selected.variants;
   const settings = roleSettings[entry.usage.displayRole];
-  const defaultVariant = nearestVariant(
-    selectedVariants,
-    settings.preferredWidth,
-  );
-  const mobileVariant = nearestVariant(
-    selectedVariants,
-    settings.mobileWidth,
-  );
   const lightboxVariant = nearestVariant(
     selectedVariants,
     Math.min(2560, losslessEntry.width),
+  );
+  const displayVariants = selectedVariants.filter((variant) =>
+    settings.widths.includes(variant.width),
+  );
+  if (displayVariants.length === 0) {
+    displayVariants.push(selectedVariants[0]);
+  }
+  const defaultVariant = nearestVariant(
+    displayVariants,
+    settings.preferredWidth,
+  );
+  const mobileVariant = nearestVariant(
+    displayVariants,
+    settings.mobileWidth,
   );
   const losslessSelection = losslessSelectionFor(losslessEntry);
   const originalSavings = savingsPercent(
@@ -764,9 +779,9 @@ for (const [index, entry] of entriesToProcess.entries()) {
       worstMeanAbsolutePixelError:
         attempt.worstMeanAbsolutePixelError,
     })),
-    displayVariants: selectedVariants,
+    displayVariants,
     src: defaultVariant.src,
-    srcSet: sourceSet(selectedVariants),
+    srcSet: sourceSet(displayVariants),
     sizes: settings.sizes,
     defaultVariant,
     mobileVariant,
@@ -781,7 +796,7 @@ for (const [index, entry] of entriesToProcess.entries()) {
   });
 
   console.log(
-    `[${index + 1}/${entriesToProcess.length}] ${losslessEntry.relativePath} -> q${encoded.selected.quality}, ${selectedVariants.length} variants`,
+    `[${index + 1}/${entriesToProcess.length}] ${losslessEntry.relativePath} -> q${encoded.selected.quality}, ${displayVariants.length} display variants + lightbox`,
   );
 }
 
@@ -844,12 +859,16 @@ for (const image of images) {
 }
 const responsiveVariantTotalBytes = [...allSelectedVariantPaths].reduce(
   (total, variantPath) => {
-    const owningImage = images.find((image) =>
-      image.displayVariants.some((variant) => variant.path === variantPath),
+    const owningImage = images.find(
+      (image) =>
+        image.displayVariants.some(
+          (variant) => variant.path === variantPath,
+        ) || image.lightboxVariant.path === variantPath,
     );
-    const variant = owningImage.displayVariants.find(
-      (candidate) => candidate.path === variantPath,
-    );
+    const variant =
+      owningImage.displayVariants.find(
+        (candidate) => candidate.path === variantPath,
+      ) ?? owningImage.lightboxVariant;
     return total + variant.fileSize;
   },
   0,

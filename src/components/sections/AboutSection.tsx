@@ -35,6 +35,7 @@ export function AboutSection({ media }: { media?: MediaFolder }) {
                 <ResponsiveImage
                   file={portrait}
                   alt="庄松源个人照片"
+                  activationMargin="100px 0px"
                 />
               ) : (
                 <div className="about-experience__portrait-placeholder">

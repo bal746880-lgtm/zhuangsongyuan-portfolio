@@ -226,7 +226,7 @@ export function ScrollDrivenGallery({
         setIsSectionActive(true);
         observer.disconnect();
       },
-      { rootMargin: "900px 0px" },
+      { rootMargin: "450px 0px" },
     );
     observer.observe(container);
     return () => observer.disconnect();

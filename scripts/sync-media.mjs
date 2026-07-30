@@ -6,6 +6,7 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -98,16 +99,21 @@ function toPosixPath(value) {
   return value.split(path.sep).join("/");
 }
 
-function toVersionedUrl(filePath) {
-  return stat(filePath).then((fileStats) => {
-    const relativeToPublic = path.relative(publicRoot, filePath);
-    const version = `${fileStats.size}-${Math.round(fileStats.mtimeMs)}`;
-    return {
-      src: `${toPublicUrl(relativeToPublic)}?v=${version}`,
-      path: toPublicUrl(relativeToPublic),
-      stats: fileStats,
-    };
-  });
+async function toVersionedUrl(filePath) {
+  const [fileStats, contents] = await Promise.all([
+    stat(filePath),
+    readFile(filePath),
+  ]);
+  const relativeToPublic = path.relative(publicRoot, filePath);
+  const version = createHash("sha256")
+    .update(contents)
+    .digest("hex")
+    .slice(0, 12);
+  return {
+    src: `${toPublicUrl(relativeToPublic)}?v=${version}`,
+    path: toPublicUrl(relativeToPublic),
+    stats: fileStats,
+  };
 }
 
 async function loadOptimizationReport() {
@@ -230,29 +236,30 @@ async function selectResponsiveAsset(originalProjectPath) {
   if (!reportEntry) return null;
 
   try {
-    const variants = [];
+    const allVariants = [];
     for (const variant of reportEntry.displayVariants ?? []) {
-      variants.push(await versionResponsiveVariant(variant));
+      allVariants.push(await versionResponsiveVariant(variant));
     }
-    if (variants.length === 0) return null;
+    if (allVariants.length === 0) return null;
 
-    const defaultVariant =
-      variants.find(
-        (variant) => variant.path === projectPathToPublicUrl(
-          reportEntry.defaultVariant.path,
-        ),
-      ) ?? variants[0];
     const lightboxVariant =
-      variants.find(
+      allVariants.find(
         (variant) => variant.path === projectPathToPublicUrl(
           reportEntry.lightboxVariant.path,
         ),
-      ) ?? variants.at(-1);
+      ) ?? await versionResponsiveVariant(reportEntry.lightboxVariant);
+    const displayVariants = allVariants;
+    const defaultVariant =
+      displayVariants.find(
+        (variant) => variant.path === projectPathToPublicUrl(
+          reportEntry.defaultVariant.path,
+        ),
+      ) ?? displayVariants[0];
 
     return {
       defaultVariant,
-      displayVariants: variants,
-      srcSet: variants
+      displayVariants,
+      srcSet: displayVariants
         .map((variant) => `${variant.src} ${variant.width}w`)
         .join(", "),
       sizes: reportEntry.sizes,

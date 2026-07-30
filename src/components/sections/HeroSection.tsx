@@ -8,14 +8,16 @@ export function HeroSection({ media }: { media?: MediaFolder }) {
   return (
     <section className="hero-section" id="hero" aria-label="西福寺项目主视觉">
       {heroImage ? (
-        <ResponsiveImage
-          file={heroImage}
-          className="hero-section__image"
-          alt="西福寺项目主视觉"
-          eager
-          forceActive
-          observeViewport={false}
-        />
+        <picture className="hero-section__picture">
+          <ResponsiveImage
+            file={heroImage}
+            className="hero-section__image"
+            alt="西福寺项目主视觉"
+            eager
+            forceActive
+            observeViewport={false}
+          />
+        </picture>
       ) : (
         <div className="hero-section__fallback" aria-hidden="true" />
       )}

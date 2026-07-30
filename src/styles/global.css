@@ -338,9 +338,13 @@ ul {
   scroll-margin-top: 0;
 }
 
+.hero-section__picture,
 .hero-section__image {
   display: block;
   width: 100%;
+}
+
+.hero-section__image {
   height: auto;
   object-fit: contain;
   object-position: center;

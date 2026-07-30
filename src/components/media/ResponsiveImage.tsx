@@ -18,6 +18,7 @@ interface ResponsiveImageProps
   sourceOverride?: string;
   widthOverride?: number;
   heightOverride?: number;
+  activationMargin?: string;
 }
 
 export function ResponsiveImage({
@@ -28,6 +29,7 @@ export function ResponsiveImage({
   sourceOverride,
   widthOverride,
   heightOverride,
+  activationMargin = "450px 0px",
   ...imageProps
 }: ResponsiveImageProps) {
   const imageRef = useRef<HTMLImageElement>(null);
@@ -53,11 +55,17 @@ export function ResponsiveImage({
         setIsActive(true);
         observer.disconnect();
       },
-      { rootMargin: "800px 0px" },
+      { rootMargin: activationMargin },
     );
     observer.observe(image);
     return () => observer.disconnect();
-  }, [eager, forceActive, isActive, observeViewport]);
+  }, [
+    activationMargin,
+    eager,
+    forceActive,
+    isActive,
+    observeViewport,
+  ]);
 
   const activeSource = sourceOverride ?? file.src ?? file.url;
   const useResponsiveSources = !sourceOverride;
@@ -73,7 +81,7 @@ export function ResponsiveImage({
       height={heightOverride ?? file.height}
       loading={eager ? "eager" : "lazy"}
       decoding="async"
-      fetchPriority={eager ? "high" : "auto"}
+      fetchPriority={eager ? "high" : "low"}
       data-media-active={isActive ? "true" : "false"}
     />
   );
