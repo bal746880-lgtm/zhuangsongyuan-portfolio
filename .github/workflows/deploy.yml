@@ -12,8 +12,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: false
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -22,23 +22,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js LTS
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 24
           cache: npm
 
-      - name: Configure GitHub Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Clean previous build
+        run: rm -rf dist
+
       - name: Build
         run: npm run build
 
-      - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Verify deployment output
+        run: |
+          du -sh dist
+          du -sh dist/*
+          find dist -type f | wc -l
+          find dist -type f -printf '%s %p\n' | sort -nr | sed -n '1,30p'
+          npm run deploy:verify
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./dist
 
