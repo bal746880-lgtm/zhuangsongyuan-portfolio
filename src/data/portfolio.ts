@@ -93,7 +93,7 @@ export const vegetationSteps = [
   },
   {
     number: 5,
-    title: "ZBrush 雕刻树干八猴烘焙高低模与Speedtree焊接制作",
+    title: "ZB雕刻树干，八猴高低模烘焙及Speedtree制作",
     body: "在 ZBrush 中雕刻树干与主要枝条，重点处理主干形体、树皮走向、裂纹、表面起伏和结构转折，为后续贴图制作提供高模细节。",
   },
   {

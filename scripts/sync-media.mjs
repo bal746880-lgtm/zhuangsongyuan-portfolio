@@ -70,6 +70,19 @@ function getLeadingNumber(name) {
   return match ? Number(match[1]) : null;
 }
 
+function compareByLeadingNumber(left, right) {
+  const leftNumber = left.sortValue ?? getLeadingNumber(left.name);
+  const rightNumber = right.sortValue ?? getLeadingNumber(right.name);
+  if (leftNumber !== null && rightNumber !== null) {
+    return leftNumber - rightNumber;
+  }
+  if (leftNumber !== null) return -1;
+  if (rightNumber !== null) return 1;
+  return left.name.localeCompare(right.name, "zh-CN", {
+    sensitivity: "base",
+  });
+}
+
 function toPublicUrl(relativePath) {
   return `/${relativePath
     .split(path.sep)
@@ -432,6 +445,10 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
       optimizedFormat: losslessSelected.optimizedFormat ?? null,
       originalSizeBytes: sourceStats.size,
     });
+  }
+
+  if (folder.name.startsWith("5_ZB雕刻树干")) {
+    folder.files.sort(compareByLeadingNumber);
   }
 
   return folder;

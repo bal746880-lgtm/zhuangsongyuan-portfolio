@@ -36,6 +36,16 @@ const reportMarkdownPath = path.join(
   outputsRoot,
   "q92-image-optimization-report.md",
 );
+const onlyPrefixOption = process.argv.find((argument) =>
+  argument.startsWith("--only-prefix="),
+);
+const onlyPrefix = onlyPrefixOption
+  ? toPosix(onlyPrefixOption.slice("--only-prefix=".length)).replace(/\/+$/, "")
+  : null;
+
+if (onlyPrefix && !onlyPrefix.startsWith("public/portfolio/")) {
+  throw new Error("--only-prefix must stay inside public/portfolio.");
+}
 
 const roleSettings = {
   hero: {
@@ -647,6 +657,18 @@ const usedEntries = allManifestEntries
       usage: classifyUsage(chapterName, file),
     };
   });
+const existingReport = onlyPrefix
+  ? await readJson(reportJsonPath).catch(() => null)
+  : null;
+const entriesToProcess = onlyPrefix
+  ? usedEntries.filter((entry) =>
+      entry.originalProjectPath.startsWith(`${onlyPrefix}/`),
+    )
+  : usedEntries;
+
+if (onlyPrefix && entriesToProcess.length === 0) {
+  throw new Error(`No displayed images matched ${onlyPrefix}`);
+}
 
 const sectionBaselines = sectionDefinitions.map(([sectionId, label]) =>
   sectionBaseline(sectionId, label, usedEntries),
@@ -661,15 +683,31 @@ if (
 await mkdir(q92Root, { recursive: true });
 await mkdir(outputsRoot, { recursive: true });
 
-const images = [];
-for (const [index, entry] of usedEntries.entries()) {
+const processedImages = [];
+for (const [index, entry] of entriesToProcess.entries()) {
   const source = absoluteFromProjectPath(entry.originalProjectPath);
   const sourceStats = await stat(source);
-  const losslessEntry = losslessByPath.get(entry.originalProjectPath);
+  let losslessEntry = losslessByPath.get(entry.originalProjectPath);
   if (!losslessEntry) {
-    throw new Error(
-      `Missing lossless report entry for ${entry.originalProjectPath}`,
-    );
+    const metadata = await sharp(source, {
+      failOn: "error",
+      limitInputPixels: false,
+    }).metadata();
+    if (!metadata.width || !metadata.height) {
+      throw new Error(`Unable to read image dimensions: ${entry.originalProjectPath}`);
+    }
+    losslessEntry = {
+      relativePath: toPosix(path.relative(sourceRoot, source)),
+      width: metadata.width,
+      height: metadata.height,
+      sourceMetadata: { hasIcc: Boolean(metadata.icc) },
+      smallestLosslessVersion: {
+        kind: "original",
+        path: entry.originalProjectPath,
+        sizeBytes: sourceStats.size,
+        format: path.extname(source).replace(/^\./, "").toLowerCase(),
+      },
+    };
   }
   const widths = uniqueVariantWidths(
     losslessEntry.width,
@@ -706,7 +744,7 @@ for (const [index, entry] of usedEntries.entries()) {
     defaultVariant.fileSize,
   );
 
-  images.push({
+  processedImages.push({
     originalPath: entry.originalProjectPath,
     chapter: entry.chapterName,
     sectionId: entry.usage.sectionId,
@@ -743,7 +781,27 @@ for (const [index, entry] of usedEntries.entries()) {
   });
 
   console.log(
-    `[${index + 1}/${usedEntries.length}] ${losslessEntry.relativePath} -> q${encoded.selected.quality}, ${selectedVariants.length} variants`,
+    `[${index + 1}/${entriesToProcess.length}] ${losslessEntry.relativePath} -> q${encoded.selected.quality}, ${selectedVariants.length} variants`,
+  );
+}
+
+const processedByOriginalPath = new Map(
+  processedImages.map((image) => [image.originalPath, image]),
+);
+const existingByOriginalPath = new Map(
+  (existingReport?.images ?? []).map((image) => [image.originalPath, image]),
+);
+const images = onlyPrefix
+  ? usedEntries.map(
+      (entry) =>
+        processedByOriginalPath.get(entry.originalProjectPath) ??
+        existingByOriginalPath.get(entry.originalProjectPath),
+    )
+  : processedImages;
+
+if (images.some((image) => !image)) {
+  throw new Error(
+    "Incremental report merge is missing an existing image entry; run the full optimizer once.",
   );
 }
 
