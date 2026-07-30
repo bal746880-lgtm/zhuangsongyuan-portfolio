@@ -7,15 +7,26 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { collectManifestMediaPaths } from "./prepare-pages-dist.mjs";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
+const targetArgument = process.argv[2] ?? "pages-dist";
+const deploymentRoot = path.resolve(projectRoot, targetArgument);
 const distRoot = path.join(projectRoot, "dist");
 const outputsRoot = path.join(projectRoot, "outputs");
-const manifestPath = path.join(distRoot, "portfolio", "manifest.json");
+const manifestPath = path.join(
+  deploymentRoot,
+  "portfolio",
+  "manifest.json",
+);
 const workflowRoot = path.join(projectRoot, ".github", "workflows");
+const prepareReportPath = path.join(
+  outputsRoot,
+  "pages-dist-prepare-report.json",
+);
 const markdownReportPath = path.join(
   outputsRoot,
   "github-pages-artifact-audit.md",
@@ -25,7 +36,7 @@ const jsonReportPath = path.join(
   "github-pages-artifact-audit.json",
 );
 const maximumBytes = 200 * 1024 * 1024;
-const observedArtifact = "约534 MB（GitHub Pages界面显示）";
+const maximumSingleFileBytes = 100 * 1024 * 1024;
 const expectedDronePath = "portfolio/无人机/无人机2.mp4";
 const imageExtensions = new Set([
   ".png",
@@ -53,25 +64,37 @@ function sum(items, selector = (item) => item.sizeBytes) {
   return items.reduce((total, item) => total + selector(item), 0);
 }
 
-function assertInsideDist(filePath) {
-  const relative = path.relative(distRoot, path.resolve(filePath));
+function assertInsideProject(candidate) {
+  const relative = path.relative(projectRoot, candidate);
   if (
     relative === "" ||
     relative === ".." ||
     relative.startsWith(`..${path.sep}`) ||
     path.isAbsolute(relative)
   ) {
-    throw new Error(`Path leaves dist: ${filePath}`);
+    throw new Error(`Deployment target must stay inside the project: ${candidate}`);
   }
 }
 
-async function walkFiles(directory) {
+function assertInsideDeployment(candidate) {
+  const relative = path.relative(deploymentRoot, path.resolve(candidate));
+  if (
+    relative === "" ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    throw new Error(`Path leaves deployment directory: ${candidate}`);
+  }
+}
+
+async function walkFiles(directory, relativeRoot = directory) {
   let entries;
   try {
     entries = await readdir(directory, { withFileTypes: true });
   } catch (error) {
     if (error?.code === "ENOENT") return [];
-    throw new Error(`Unable to read deployment directory: ${directory}`, {
+    throw new Error(`Unable to read directory: ${directory}`, {
       cause: error,
     });
   }
@@ -80,14 +103,14 @@ async function walkFiles(directory) {
   for (const entry of entries) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      files.push(...(await walkFiles(entryPath)));
+      files.push(...(await walkFiles(entryPath, relativeRoot)));
       continue;
     }
     if (!entry.isFile()) continue;
     const fileStats = await stat(entryPath);
     files.push({
       absolutePath: entryPath,
-      relativePath: toPosix(path.relative(distRoot, entryPath)),
+      relativePath: toPosix(path.relative(relativeRoot, entryPath)),
       extension: path.extname(entry.name).toLowerCase(),
       sizeBytes: fileStats.size,
     });
@@ -95,28 +118,21 @@ async function walkFiles(directory) {
   return files;
 }
 
-function flattenFiles(folder) {
-  return [
-    ...(folder.files ?? []),
-    ...(folder.children ?? []).flatMap(flattenFiles),
-  ];
-}
-
-function distPathFromUrl(url) {
-  const pathname = decodeURIComponent(
-    new URL(url, "https://local.invalid").pathname,
-  ).replace(/^\/+/, "");
-  const filePath = path.resolve(distRoot, ...pathname.split("/"));
-  assertInsideDist(filePath);
-  return toPosix(path.relative(distRoot, filePath));
+function deploymentPathFromManifest(relativePath) {
+  const filePath = path.resolve(
+    deploymentRoot,
+    ...relativePath.split("/"),
+  );
+  assertInsideDeployment(filePath);
+  return toPosix(path.relative(deploymentRoot, filePath));
 }
 
 async function readWorkflowAudit() {
-  const workflowFiles = (await walkFiles(workflowRoot)).filter((file) =>
-    [".yml", ".yaml"].includes(file.extension),
-  );
+  const files = await walkFiles(workflowRoot, projectRoot);
   const workflows = [];
-  for (const file of workflowFiles) {
+  for (const file of files.filter((item) =>
+    [".yml", ".yaml"].includes(item.extension),
+  )) {
     const content = await readFile(file.absolutePath, "utf8");
     const uploadActions = [
       ...content.matchAll(
@@ -132,7 +148,7 @@ async function readWorkflowAudit() {
       ),
     ].map((match) => match[1].replace(/^["']|["']$/g, ""));
     workflows.push({
-      path: toPosix(path.relative(projectRoot, file.absolutePath)),
+      path: file.relativePath,
       uploadActionVersions: uploadActions.map((match) => match[1]),
       deployActionVersions: deployActions.map((match) => match[1]),
       uploadPaths,
@@ -143,18 +159,18 @@ async function readWorkflowAudit() {
   return workflows;
 }
 
-async function directorySummaries(files) {
+function directorySummaries(files) {
   const groups = new Map();
   for (const file of files) {
     const topLevel = file.relativePath.split("/")[0];
-    const summary = groups.get(topLevel) ?? {
+    const entry = groups.get(topLevel) ?? {
       path: topLevel,
       files: 0,
       sizeBytes: 0,
     };
-    summary.files += 1;
-    summary.sizeBytes += file.sizeBytes;
-    groups.set(topLevel, summary);
+    entry.files += 1;
+    entry.sizeBytes += file.sizeBytes;
+    groups.set(topLevel, entry);
   }
   return [...groups.values()].sort(
     (left, right) => right.sizeBytes - left.sizeBytes,
@@ -162,31 +178,53 @@ async function directorySummaries(files) {
 }
 
 async function main() {
-  const requiredIndex = path.join(distRoot, "index.html");
-  const requiredAssets = path.join(distRoot, "assets");
+  assertInsideProject(deploymentRoot);
   const [indexStats, assetsStats] = await Promise.all([
-    stat(requiredIndex),
-    stat(requiredAssets),
+    stat(path.join(deploymentRoot, "index.html")),
+    stat(path.join(deploymentRoot, "assets")),
   ]);
-  if (!indexStats.isFile()) throw new Error("dist/index.html is not a file.");
+  if (!indexStats.isFile()) {
+    throw new Error(`${targetArgument}/index.html is missing.`);
+  }
   if (!assetsStats.isDirectory()) {
-    throw new Error("dist/assets is not a directory.");
+    throw new Error(`${targetArgument}/assets is missing.`);
   }
 
-  const [files, manifest, workflows] = await Promise.all([
-    walkFiles(distRoot),
-    readFile(manifestPath, "utf8").then(JSON.parse),
-    readWorkflowAudit(),
-  ]);
+  const [files, distFiles, manifest, workflows, prepareReport] =
+    await Promise.all([
+      walkFiles(deploymentRoot),
+      walkFiles(distRoot),
+      readFile(manifestPath, "utf8").then(JSON.parse),
+      readWorkflowAudit(),
+      readFile(prepareReportPath, "utf8").then(JSON.parse),
+    ]);
   const images = files.filter((file) =>
     imageExtensions.has(file.extension),
   );
   const videos = files.filter((file) =>
     videoExtensions.has(file.extension),
   );
+  const codeFiles = files.filter((file) =>
+    [".html", ".css", ".js"].includes(file.extension),
+  );
+  const manifestMedia = collectManifestMediaPaths(manifest).map(
+    deploymentPathFromManifest,
+  );
+  const referencedMedia = new Set(manifestMedia);
+  const deployedMedia = [...images, ...videos];
+  const missingMedia = manifestMedia.filter(
+    (relativePath) =>
+      !files.some((file) => file.relativePath === relativePath),
+  );
+  const unreferencedMedia = deployedMedia
+    .filter((file) => !referencedMedia.has(file.relativePath))
+    .map((file) => file.relativePath);
   const totalBytes = sum(files);
+  const distBytes = sum(distFiles);
   const imageBytes = sum(images);
   const videoBytes = sum(videos);
+  const codeBytes = sum(codeFiles);
+  const topLevelDirectories = directorySummaries(files);
   const largestFiles = [...files]
     .sort((left, right) => right.sizeBytes - left.sizeBytes)
     .slice(0, 30)
@@ -195,47 +233,36 @@ async function main() {
       extension,
       sizeBytes,
     }));
-  const topLevelDirectories = await directorySummaries(files);
 
-  const manifestFiles = Object.values(manifest.chapters ?? {}).flatMap(
-    flattenFiles,
-  );
-  const referencedImages = new Set(
-    manifestFiles
-      .filter(
-        (file) => file.kind === "image" && file.isDisplayed !== false,
-      )
-      .flatMap((file) => [
-        ...(file.displayVariants ?? []).map((variant) => variant.src),
-        file.lightboxSrc ?? file.src ?? file.url,
-      ])
-      .map(distPathFromUrl),
-  );
-  const referencedVideos = new Set(
-    manifestFiles
-      .filter(
-        (file) => file.kind === "video" && file.isDisplayed !== false,
-      )
-      .map((file) => file.src ?? file.url)
-      .map(distPathFromUrl),
-  );
-  const missingMedia = [...referencedImages, ...referencedVideos].filter(
-    (relativePath) =>
-      !files.some((file) => file.relativePath === relativePath),
-  );
-  const unreferencedMedia = [...images, ...videos]
+  const rawPngFiles = images
+    .filter((file) => file.extension === ".png")
+    .map((file) => file.relativePath);
+  const originalPortfolioImages = images
+    .filter((file) => file.relativePath.startsWith("portfolio/"))
+    .map((file) => file.relativePath);
+  const unexpectedVideos = videos
+    .filter((file) => file.relativePath !== expectedDronePath)
+    .map((file) => file.relativePath);
+  const walkthroughVideos = videos
     .filter(
       (file) =>
-        !referencedImages.has(file.relativePath) &&
-        !referencedVideos.has(file.relativePath),
+        file.relativePath.includes("人物完整跑图") ||
+        file.sizeBytes >= 200 * 1024 * 1024,
     )
     .map((file) => file.relativePath);
-
+  const oversizedFiles = files
+    .filter((file) => file.sizeBytes > maximumSingleFileBytes)
+    .map((file) => file.relativePath);
   const forbiddenDirectories = files
     .filter((file) =>
       /(^|\/)(node_modules|outputs|src|scripts|\.git|\.github)(\/|$)/.test(
         file.relativePath,
       ),
+    )
+    .map((file) => file.relativePath);
+  const sourceFiles = files
+    .filter((file) =>
+      [".ts", ".tsx", ".mjs", ".cjs"].includes(file.extension),
     )
     .map((file) => file.relativePath);
   const forbiddenFiles = files
@@ -247,27 +274,6 @@ async function main() {
         ),
     )
     .map((file) => file.relativePath);
-  const originalPortfolioImages = images
-    .filter((file) => file.relativePath.startsWith("portfolio/"))
-    .map((file) => file.relativePath);
-  const losslessDirectoryFiles = files
-    .filter((file) =>
-      file.relativePath.startsWith("portfolio-optimized-lossless/"),
-    )
-    .map((file) => file.relativePath);
-  const unexpectedVideos = videos
-    .filter((file) => file.relativePath !== expectedDronePath)
-    .map((file) => file.relativePath);
-  const oversizedWalkthroughs = videos
-    .filter(
-      (file) =>
-        file.sizeBytes >= 200 * 1024 * 1024 ||
-        file.relativePath.includes("人物完整跑图"),
-    )
-    .map((file) => file.relativePath);
-  const rawPngFiles = images
-    .filter((file) => file.extension === ".png")
-    .map((file) => file.relativePath);
   const pagesWorkflows = workflows.filter((workflow) => workflow.pagesWorkflow);
   const uploadSteps = workflows.reduce(
     (total, workflow) => total + workflow.uploadActionVersions.length,
@@ -277,125 +283,118 @@ async function main() {
 
   const failures = [];
   if (totalBytes > maximumBytes) {
-    failures.push("Deployment cancelled: dist exceeds 200 MiB");
+    failures.push("Deployment cancelled: pages-dist exceeds 200 MiB");
   }
-  if (uploadSteps !== 1) {
-    failures.push(`Expected one Pages upload step, found ${uploadSteps}.`);
+  if (oversizedFiles.length) {
+    failures.push("pages-dist contains a file larger than 100 MiB.");
   }
   if (
     uploadPaths.length !== 1 ||
-    !["./dist", "dist"].includes(uploadPaths[0])
+    !["./pages-dist", "pages-dist"].includes(uploadPaths[0])
   ) {
     failures.push(
-      `Pages upload path must be ./dist, found: ${uploadPaths.join(", ") || "none"}.`,
+      `Pages upload path must be ./pages-dist, found: ${uploadPaths.join(", ") || "none"}.`,
     );
   }
-  if (pagesWorkflows.length !== 1) {
+  if (uploadSteps !== 1 || pagesWorkflows.length !== 1) {
     failures.push(
-      `Expected one Pages workflow, found ${pagesWorkflows.length}.`,
+      `Expected one Pages workflow/upload step, found ${pagesWorkflows.length}/${uploadSteps}.`,
     );
   }
-  if (forbiddenDirectories.length) {
-    failures.push("Deployment contains forbidden source directories.");
-  }
-  if (forbiddenFiles.length) {
-    failures.push("Deployment contains PDF, report, package, or README files.");
-  }
+  if (rawPngFiles.length) failures.push("pages-dist contains raw PNG files.");
   if (originalPortfolioImages.length) {
-    failures.push("Deployment contains original portfolio images.");
+    failures.push("pages-dist contains original portfolio images.");
   }
-  if (losslessDirectoryFiles.length) {
-    failures.push("Deployment contains the lossless candidate directory.");
+  if (unexpectedVideos.length || walkthroughVideos.length) {
+    failures.push("pages-dist contains an unexpected local video.");
   }
-  if (unexpectedVideos.length) {
-    failures.push("Deployment contains unexpected videos.");
-  }
-  if (oversizedWalkthroughs.length) {
-    failures.push("Deployment contains a local walkthrough video.");
-  }
-  if (rawPngFiles.length) {
-    failures.push("Deployment contains raw PNG files.");
+  if (forbiddenDirectories.length || sourceFiles.length || forbiddenFiles.length) {
+    failures.push("pages-dist contains forbidden source or report files.");
   }
   if (missingMedia.length) {
-    failures.push("Manifest references missing media.");
+    failures.push("Manifest references media missing from pages-dist.");
   }
   if (unreferencedMedia.length) {
-    failures.push("Deployment contains unreferenced media.");
+    failures.push("pages-dist contains unreferenced media.");
+  }
+  if (
+    prepareReport.manifestReferencedMediaCount !== manifestMedia.length ||
+    prepareReport.copiedMediaCount !== deployedMedia.length ||
+    prepareReport.missingCount !== 0
+  ) {
+    failures.push("Pages preparation counts do not match verification.");
   }
 
   const audit = {
     generatedAt: new Date().toISOString(),
     rootCause: {
       conclusion:
-        "旧工作流的上传路径本来就是./dist，且只有一个Pages工作流；534 MB不是由上传项目根目录或public造成。该数值与当前本地已清理dist不一致，说明GitHub那次运行对应的远端版本上传了未完成当前媒体清理的旧dist（或运行时尚未包含当前prune与manifest修复）。",
-      evidence: [
-        "旧upload-pages-artifact路径为./dist。",
-        "本地相同build顺序生成的dist远低于200 MiB。",
-        "当前构建在Vite复制public后运行prune-build-media.mjs。",
-        "旧prune脚本把非ENOENT扫描异常静默当成空目录，缺少明确失败信号。",
-      ],
-      likelyExtraDirectories:
-        "未清理dist中的portfolio原图、portfolio-optimized-lossless及未使用的portfolio-optimized-q92候选。",
-      remoteLimitation:
-        "未读取GitHub远端日志或Artifact内容，因此无法对旧Artifact逐文件取证；本轮门禁会让相同异常在上传前直接失败并打印文件清单。",
+        "GitHub Linux环境没有本地outputs目录中的Q92/无损优化报告。旧sync-media.mjs因此重新生成了指向public/portfolio原始PNG的manifest；prune-build-media.mjs随后按该manifest保留80张原图并删除响应式候选，最终得到534.93 MiB。prune并非路径删除失败，而是依据错误回退manifest执行了错误白名单。",
+      cloudEvidence: {
+        deploymentBytes: 534.93,
+        files: 87,
+        images: 80,
+        imageMiB: 469.08,
+        videoMiB: 65.38,
+      },
+      fix:
+        "优化报告缺失时，sync-media现在验证并复用已提交的优化manifest，拒绝回退原图；Pages再从manifest白名单重建pages-dist。",
     },
-    workflow: {
-      previousUploadAction: "actions/upload-pages-artifact@v3",
-      currentUploadAction:
-        pagesWorkflows[0]?.uploadActionVersions[0] ?? null,
-      previousUploadPath: "./dist",
-      currentUploadPaths: uploadPaths,
-      uploadedProjectRoot: false,
-      uploadedPublic: false,
-      pagesWorkflowCount: pagesWorkflows.length,
-      uploadStepCount: uploadSteps,
-      files: workflows,
+    directories: {
+      distBytes,
+      pagesDistBytes: totalBytes,
+      pagesDistFiles: files.length,
     },
-    artifact: {
-      githubDisplayedSize: observedArtifact,
-      localDistBytes: totalBytes,
-      maximumBytes,
-      maximumMiB: 200,
-      fileCount: files.length,
+    preparation: {
+      manifestReferencedMediaCount: manifestMedia.length,
+      copiedMediaCount: deployedMedia.length,
+      missingCount: missingMedia.length,
+      unreferencedCount: unreferencedMedia.length,
+      report: prepareReport,
+    },
+    content: {
       imageCount: images.length,
       imageBytes,
       videoCount: videos.length,
       videoBytes,
+      codeCount: codeFiles.length,
+      codeBytes,
       rawPngCount: rawPngFiles.length,
-      unreferencedMediaCount: unreferencedMedia.length,
-      missingMediaCount: missingMedia.length,
       largestFiles,
       topLevelDirectories,
-    },
-    validation: {
-      passed: failures.length === 0,
-      failures,
-      expectedDronePath,
       deployedVideos: videos.map((file) => ({
         path: file.relativePath,
         sizeBytes: file.sizeBytes,
       })),
-      forbiddenDirectories,
-      forbiddenFiles,
-      originalPortfolioImages,
-      losslessDirectoryFiles,
-      unexpectedVideos,
-      oversizedWalkthroughs,
-      rawPngFiles,
+    },
+    workflow: {
+      uploadPaths,
+      uploadStepCount: uploadSteps,
+      pagesWorkflowCount: pagesWorkflows.length,
+      files: workflows,
+      maximumMiB: 200,
+      maximumSingleFileMiB: 100,
+    },
+    validation: {
+      passed: failures.length === 0,
+      failures,
       missingMedia,
       unreferencedMedia,
-    },
-    pruneCompatibility: {
-      before:
-        "主要路径处理已使用node:path并兼容Linux，但目录扫描和空目录检查会静默忽略所有读取异常，路径边界使用字符串前缀比较。",
-      after:
-        "仅ENOENT视为可选目录不存在；其他读取异常明确报错并使构建退出1。路径边界改用path.relative，媒体集合使用跨平台规范化绝对路径键。",
-      linuxCompatible: true,
+      rawPngFiles,
+      originalPortfolioImages,
+      unexpectedVideos,
+      walkthroughVideos,
+      oversizedFiles,
+      forbiddenDirectories,
+      sourceFiles,
+      forbiddenFiles,
     },
     modifiedFiles: [
       ".github/workflows/deploy.yml",
+      ".gitignore",
       "package.json",
-      "scripts/prune-build-media.mjs",
+      "scripts/sync-media.mjs",
+      "scripts/prepare-pages-dist.mjs",
       "scripts/verify-deployment-size.mjs",
       "outputs/github-pages-artifact-audit.md",
       "outputs/github-pages-artifact-audit.json",
@@ -414,34 +413,30 @@ async function main() {
       `| ${entry.path} | ${entry.files} | ${formatBytes(entry.sizeBytes)} |`,
   );
   const markdown = [
-    "# 西福寺 GitHub Pages Artifact 审计",
+    "# 西福寺 GitHub Pages 干净部署目录审计",
     "",
     `生成时间：${audit.generatedAt}`,
     "",
-    "## 结论",
+    "## 根因",
     "",
-    `- 根因：${audit.rootCause.conclusion}`,
-    `- 旧上传路径：${audit.workflow.previousUploadPath}`,
-    `- 新上传路径：${audit.workflow.currentUploadPaths.join(", ")}`,
-    `- GitHub显示：${observedArtifact}`,
-    `- 本地dist：${formatBytes(totalBytes)}`,
-    `- 200 MiB门禁：${failures.length ? "失败" : "通过"}`,
-    `- Pages工作流：${pagesWorkflows.length}个`,
-    `- Pages上传步骤：${uploadSteps}个`,
+    `- ${audit.rootCause.conclusion}`,
+    `- 修复：${audit.rootCause.fix}`,
     "",
-    "## 跨平台清理",
+    "## 结果",
     "",
-    `- 修复前：${audit.pruneCompatibility.before}`,
-    `- 修复后：${audit.pruneCompatibility.after}`,
-    "",
-    "## 构建内容",
-    "",
+    `- dist：${formatBytes(distBytes)}`,
+    `- pages-dist：${formatBytes(totalBytes)}`,
     `- 文件：${files.length}`,
+    `- manifest引用媒体：${manifestMedia.length}`,
+    `- 成功复制媒体：${deployedMedia.length}`,
     `- 图片：${images.length}个 / ${formatBytes(imageBytes)}`,
     `- 视频：${videos.length}个 / ${formatBytes(videoBytes)}`,
+    `- HTML/CSS/JS：${codeFiles.length}个 / ${formatBytes(codeBytes)}`,
     `- 原始PNG：${rawPngFiles.length}`,
-    `- 未引用媒体：${unreferencedMedia.length}`,
     `- 缺失媒体：${missingMedia.length}`,
+    `- 未引用媒体：${unreferencedMedia.length}`,
+    `- 上传路径：${uploadPaths.join(", ")}`,
+    `- 200 MiB门禁：${failures.length ? "失败" : "通过"}`,
     "",
     "| 一级路径 | 文件数 | 大小 |",
     "|---|---:|---:|",
@@ -453,25 +448,27 @@ async function main() {
     "|---:|---|---|---:|",
     ...largestRows,
     "",
-    "## 限制",
-    "",
-    `- ${audit.rootCause.remoteLimitation}`,
-    "- 工作流超过200 MiB时会在Upload artifact之前失败，并输出一级目录及最大30个文件。",
-    "",
   ].join("\n");
   await writeFile(markdownReportPath, markdown, "utf8");
 
-  console.log(`Deployment output: ${formatBytes(totalBytes)} (${totalBytes} bytes)`);
+  console.log(`dist: ${formatBytes(distBytes)} (${distBytes} bytes)`);
+  console.log(`pages-dist: ${formatBytes(totalBytes)} (${totalBytes} bytes)`);
   console.log(`Files: ${files.length}`);
   console.log(`Images: ${images.length}, ${formatBytes(imageBytes)}`);
   console.log(`Videos: ${videos.length}, ${formatBytes(videoBytes)}`);
-  console.log("Top-level deployment content:");
+  console.log(`HTML/CSS/JS: ${codeFiles.length}, ${formatBytes(codeBytes)}`);
+  console.log(`Manifest referenced media: ${manifestMedia.length}`);
+  console.log(`Copied media: ${deployedMedia.length}`);
+  console.log(`Raw PNG: ${rawPngFiles.length}`);
+  console.log(`Missing media: ${missingMedia.length}`);
+  console.log(`Unreferenced media: ${unreferencedMedia.length}`);
+  console.log("Top-level pages-dist content:");
   for (const entry of topLevelDirectories) {
     console.log(
       `  ${entry.path}: ${formatBytes(entry.sizeBytes)}, ${entry.files} files`,
     );
   }
-  console.log("Largest 30 deployment files:");
+  console.log("Largest 30 pages-dist files:");
   for (const [index, file] of largestFiles.entries()) {
     console.log(
       `  ${String(index + 1).padStart(2, "0")}. ${formatBytes(file.sizeBytes)}  ${file.relativePath}`,
@@ -485,12 +482,11 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-
-  console.log("Deployment verification passed: dist is below 200 MiB.");
+  console.log("Pages deployment verification passed: pages-dist is below 200 MiB.");
 }
 
 main().catch((error) => {
-  console.error("Deployment verification failed.");
+  console.error("Pages deployment verification failed.");
   console.error(error?.stack ?? error);
   process.exitCode = 1;
 });

@@ -35,23 +35,26 @@ jobs:
         run: npm ci
 
       - name: Clean previous build
-        run: rm -rf dist
+        run: rm -rf dist pages-dist
 
       - name: Build
         run: npm run build
 
+      - name: Prepare Pages artifact
+        run: npm run pages:prepare
+
       - name: Verify deployment output
         run: |
-          du -sh dist
-          du -sh dist/*
-          find dist -type f | wc -l
-          find dist -type f -printf '%s %p\n' | sort -nr | sed -n '1,30p'
-          npm run deploy:verify
+          du -sh pages-dist
+          du -sh pages-dist/*
+          find pages-dist -type f | wc -l
+          find pages-dist -type f -printf '%s %p\n' | sort -nr | sed -n '1,30p'
+          npm run pages:verify
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./dist
+          path: ./pages-dist
 
   deploy:
     environment:

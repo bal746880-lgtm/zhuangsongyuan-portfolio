@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { collectManifestMediaPaths } from "./prepare-pages-dist.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const desktopRoot = path.join(homedir(), "Desktop");
@@ -149,6 +150,74 @@ async function loadQ92Report() {
 }
 
 const q92Entries = await loadQ92Report();
+
+async function preserveExistingOptimizedManifest() {
+  const manifestPath = path.join(outputRoot, "manifest.json");
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  } catch (error) {
+    throw new Error(
+      "Responsive optimization report is unavailable and no committed manifest can be reused.",
+      { cause: error },
+    );
+  }
+
+  const mediaPaths = collectManifestMediaPaths(manifest);
+  const missing = [];
+  for (const relativePath of mediaPaths) {
+    const assetPath = path.resolve(publicRoot, ...relativePath.split("/"));
+    const relative = path.relative(publicRoot, assetPath);
+    if (
+      relative === ".." ||
+      relative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relative)
+    ) {
+      throw new Error(`Committed manifest path escapes public: ${relativePath}`);
+    }
+    try {
+      const assetStats = await stat(assetPath);
+      if (!assetStats.isFile()) missing.push(relativePath);
+    } catch {
+      missing.push(relativePath);
+    }
+  }
+  if (missing.length) {
+    throw new Error(
+      `Committed optimized manifest references missing public assets:\n${missing.join("\n")}`,
+    );
+  }
+  if (
+    mediaPaths.some(
+      (relativePath) =>
+        relativePath.startsWith("portfolio/") &&
+        imageExtensions.has(path.posix.extname(relativePath).toLowerCase()),
+    )
+  ) {
+    throw new Error(
+      "Committed manifest selects original portfolio images; refusing cloud fallback.",
+    );
+  }
+
+  const fileCount = Object.values(manifest.chapters ?? {}).reduce(
+    (total, folder) => {
+      const countFiles = (current) =>
+        (current.files?.length ?? 0) +
+        (current.children ?? []).reduce(
+          (childTotal, child) => childTotal + countFiles(child),
+          0,
+        );
+      return total + countFiles(folder);
+    },
+    0,
+  );
+  console.warn(
+    "Q92 report unavailable; preserved and verified the committed optimized manifest.",
+  );
+  console.log(
+    `Portfolio media ready from committed manifest: ${Object.keys(manifest.chapters ?? {}).length} chapters, ${fileCount} files, ${mediaPaths.length} referenced media assets.`,
+  );
+}
 
 function verifiedCandidateFor(entry, kind) {
   if (kind === "optimized-png") return entry.optimizedPng;
@@ -462,6 +531,11 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
 }
 
 await mkdir(outputRoot, { recursive: true });
+
+if (q92Entries.size === 0) {
+  await preserveExistingOptimizedManifest();
+  process.exit(0);
+}
 
 const manifest = {
   generatedAt: new Date().toISOString(),
