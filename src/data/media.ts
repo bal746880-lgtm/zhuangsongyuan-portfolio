@@ -17,6 +17,7 @@ export interface MediaFile {
   extension: string;
   kind: MediaKind;
   sortValue: number | null;
+  naturalOrder?: number | null;
   sizeBytes: number;
   width?: number;
   height?: number;
@@ -44,6 +45,7 @@ export interface MediaFolder {
   name: string;
   relativePath: string;
   sortValue: number | null;
+  naturalOrder?: number | null;
   files: MediaFile[];
   children: MediaFolder[];
 }

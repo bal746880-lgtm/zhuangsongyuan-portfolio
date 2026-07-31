@@ -33,6 +33,16 @@ export const galleryLayouts = {
     layoutVariant: "technical",
     maxMediaHeight: "clamp(540px, 72vh, 860px)",
   },
+  propAiPipeline: {
+    layoutMode: "horizontal",
+    layoutVariant: "technical",
+    maxMediaHeight: "clamp(520px, 68vh, 800px)",
+  },
+  propCollection: {
+    layoutMode: "single",
+    layoutVariant: "cinematic",
+    maxMediaHeight: "clamp(520px, 68vh, 820px)",
+  },
   selectedStills: {
     layoutMode: "horizontal",
     layoutVariant: "cinematic",
@@ -52,6 +62,11 @@ export const galleryLayouts = {
     layoutMode: "equal-row",
     layoutVariant: "technical",
     maxMediaHeight: "clamp(420px, 32vw, 650px)",
+  },
+  treeTrunkAiPipeline: {
+    layoutMode: "horizontal",
+    layoutVariant: "technical",
+    maxMediaHeight: "clamp(520px, 68vh, 800px)",
   },
   pcgProcess: {
     layoutMode: "horizontal",

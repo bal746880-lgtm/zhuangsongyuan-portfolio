@@ -38,7 +38,7 @@ const revealRules: readonly RevealRule[] = [
     delay: 0,
   },
   {
-    selector: ".section-header__copy > h2, .subsection-heading > h3",
+    selector: ".section-header__title-line, .subsection-heading > h3",
     delay: 60,
   },
   {
@@ -60,6 +60,7 @@ const revealRules: readonly RevealRule[] = [
     stagger: 70,
     staggerMax: 210,
   },
+  { selector: ".about-experience__capabilities", delay: 120 },
   {
     selector: ".career-timeline",
     timeline: true,
@@ -107,6 +108,7 @@ const revealRules: readonly RevealRule[] = [
   { selector: ".process-step__header h3", delay: 120 },
   { selector: ".process-step__header p:not(.eyebrow)", delay: 180 },
   { selector: ".process-step__badge", delay: 220 },
+  { selector: ".pipeline-flow-board", duration: 520, fadeOnly: true },
 
   {
     selector: ".gallery-media-item",
@@ -132,8 +134,8 @@ const revealRules: readonly RevealRule[] = [
   },
   {
     selector: ".scroll-driven-gallery",
-    distance: 24,
     duration: 560,
+    fadeOnly: true,
   },
 
   {

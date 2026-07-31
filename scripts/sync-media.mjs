@@ -328,6 +328,11 @@ async function selectResponsiveAsset(originalProjectPath) {
     return {
       defaultVariant,
       displayVariants,
+      width: reportEntry.originalWidth ?? defaultVariant.width,
+      height: reportEntry.originalHeight ?? defaultVariant.height,
+      aspectRatio:
+        (reportEntry.originalWidth ?? defaultVariant.width) /
+        (reportEntry.originalHeight ?? defaultVariant.height),
       srcSet: displayVariants
         .map((variant) => `${variant.src} ${variant.width}w`)
         .join(", "),
@@ -413,6 +418,7 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     name: path.basename(sourceFolder),
     relativePath: path.relative(chapterRoot, sourceFolder),
     sortValue: getLeadingNumber(path.basename(sourceFolder)),
+    naturalOrder: getLeadingNumber(path.basename(sourceFolder)),
     files: [],
     children: [],
   };
@@ -480,9 +486,10 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     const imageMetadata =
       kind === "image"
         ? {
-            width: losslessSelected.width,
-            height: losslessSelected.height,
-            aspectRatio: losslessSelected.aspectRatio,
+            width: responsiveSelected?.width ?? losslessSelected.width,
+            height: responsiveSelected?.height ?? losslessSelected.height,
+            aspectRatio:
+              responsiveSelected?.aspectRatio ?? losslessSelected.aspectRatio,
             alt: entry.name.replace(/\.[^.]+$/, ""),
             srcSet:
               responsiveSelected?.srcSet ??
@@ -513,6 +520,7 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
         kind === "image" ? path.extname(selected.path).toLowerCase() : extension,
       kind,
       sortValue: getLeadingNumber(entry.name),
+      naturalOrder: getLeadingNumber(entry.name),
       sizeBytes: selected.stats?.size ?? selected.fileSize,
       ...imageMetadata,
       isDisplayed: isDisplayedAsset(kind, originalProjectPath),
@@ -523,9 +531,8 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     });
   }
 
-  if (folder.name.startsWith("5_ZB雕刻树干")) {
-    folder.files.sort(compareByLeadingNumber);
-  }
+  folder.files.sort(compareByLeadingNumber);
+  folder.children.sort(compareByLeadingNumber);
 
   return folder;
 }

@@ -3,6 +3,7 @@ import {
   access,
   copyFile,
   mkdir,
+  readFile,
   rm,
   stat,
 } from "node:fs/promises";
@@ -22,10 +23,6 @@ const primaryPdfPath = path.join(
 const emailPdfPath = path.join(
   outputDirectory,
   "庄松源_西福寺_作品集_邮件版.pdf",
-);
-const emailBackupPdfPath = path.join(
-  outputDirectory,
-  "庄松源_西福寺_作品集_邮件版_21MB备份.pdf",
 );
 const emailCandidateDirectory = path.join(
   projectRoot,
@@ -50,30 +47,72 @@ const emailTargetBytes = 95 * mebibyte;
 const emailHighQualityOnly = process.argv.includes(
   "--email-high-quality",
 );
+const skipBuild = process.argv.includes("--skip-build");
+const expectedVegetationTitle =
+  "ZB雕刻树干，八猴高低模烘焙及Speedtree制作";
+const forbiddenVegetationTitles = [
+  "ZB雕刻树干，八猴高低模烘焙及ST焊接",
+  "ZBrush 雕刻树干八猴烘焙高低模与Speedtree焊接制作",
+];
+const expectedSectionTitles = [
+  "个人介绍与经历",
+  "主要静帧",
+  "项目概览与个人职责",
+  "规划与跑图路线",
+  "模块化建筑与道具",
+  "程序化材质与场景应用",
+  "Substance Designer 节点与制作过程",
+  "植被资产陈列",
+  "植被全流程制作过程展示",
+  "岩石苔藓 PCG 系统",
+  "场景静帧",
+  "项目职责与联系方式",
+];
+const excludedPdfChapterNames = new Set([
+  "无人机",
+  "人物完整跑图",
+  "项目职责与联系方式",
+]);
+const manifestPath = path.join(
+  projectRoot,
+  "public",
+  "portfolio",
+  "manifest.json",
+);
+const emailMaxWidths = {
+  hero: 2560,
+  scene: 2400,
+  asset: 2200,
+  portrait: 1800,
+  technical: 2560,
+};
 const emailProfiles = {
   high: {
     name: "high",
-    hero: 98,
+    hero: 97,
     scene: 96,
-    asset: 95,
+    asset: 96,
     portrait: 96,
     technical: 98,
+    maxWidths: emailMaxWidths,
   },
   balanced: {
     name: "balanced",
-    hero: 98,
-    scene: 94,
+    hero: 97,
+    scene: 95,
     asset: 95,
     portrait: 96,
     technical: 98,
+    maxWidths: emailMaxWidths,
   },
   safe: {
     name: "safe",
-    hero: 98,
-    scene: 92,
+    hero: 95,
+    scene: 93,
     asset: 94,
-    portrait: 94,
-    technical: 98,
+    portrait: 95,
+    technical: 97,
+    maxWidths: emailMaxWidths,
   },
   ultra: {
     name: "ultra",
@@ -82,6 +121,7 @@ const emailProfiles = {
     asset: 97,
     portrait: 98,
     technical: 98,
+    maxWidths: emailMaxWidths,
   },
   hybridStills: {
     name: "hybrid-stills",
@@ -90,6 +130,7 @@ const emailProfiles = {
     asset: 97,
     portrait: 98,
     technical: 98,
+    maxWidths: emailMaxWidths,
     retainSourceLimits: {
       stills: 6,
     },
@@ -101,6 +142,7 @@ const emailProfiles = {
     asset: 97,
     portrait: 98,
     technical: 98,
+    maxWidths: emailMaxWidths,
     retainSourceLimits: {
       stills: 3,
     },
@@ -129,35 +171,81 @@ async function firstExistingPath(paths) {
   return null;
 }
 
-async function pathExists(target) {
-  try {
-    await access(target);
-    return true;
-  } catch {
-    return false;
-  }
+function imagesInFolder(folder) {
+  return (folder?.files ?? [])
+    .filter(
+      (file) =>
+        file.kind === "image" && file.isDisplayed !== false,
+    )
+    .sort((left, right) => {
+      const leftNumber =
+        left.sortValue ??
+        Number(left.name.match(/^(\d+)/)?.[1] ?? Number.MAX_SAFE_INTEGER);
+      const rightNumber =
+        right.sortValue ??
+        Number(right.name.match(/^(\d+)/)?.[1] ?? Number.MAX_SAFE_INTEGER);
+      return (
+        leftNumber - rightNumber ||
+        left.name.localeCompare(right.name, "zh-CN", {
+          numeric: true,
+        })
+      );
+    });
 }
 
-async function backupExistingEmailPdf() {
-  if (await pathExists(emailBackupPdfPath)) {
-    return {
-      path: emailBackupPdfPath,
-      created: false,
-      sizeBytes: (await stat(emailBackupPdfPath)).size,
-    };
-  }
+function collectFolderImages(folder) {
+  return [
+    ...imagesInFolder(folder),
+    ...(folder?.children ?? []).flatMap(collectFolderImages),
+  ];
+}
 
-  if (!(await pathExists(emailPdfPath))) {
+async function loadPdfExpectations() {
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const chapters = Object.entries(manifest.chapters ?? {});
+  const websiteImages = chapters.flatMap(([, folder]) =>
+    collectFolderImages(folder),
+  );
+  const pdfImages = chapters
+    .filter(([chapterName]) => !excludedPdfChapterNames.has(chapterName))
+    .flatMap(([, folder]) => collectFolderImages(folder));
+  const vegetationChapter = chapters
+    .map(([, folder]) => folder)
+    .find((folder) => folder.name?.includes("Billboard"));
+  const stepFiveFolder = vegetationChapter?.children?.find(
+    (folder) => folder.sortValue === 5,
+  );
+  const stepFiveImages = imagesInFolder(stepFiveFolder);
+  const expectedStepOrder = Array.from(
+    { length: 14 },
+    (_, index) => index + 1,
+  );
+  const actualStepOrder = stepFiveImages.map(
+    (file) =>
+      file.sortValue ??
+      Number(file.name.match(/^(\d+)/)?.[1] ?? -1),
+  );
+
+  if (
+    actualStepOrder.length !== expectedStepOrder.length ||
+    actualStepOrder.some(
+      (value, index) => value !== expectedStepOrder[index],
+    )
+  ) {
     throw new Error(
-      `The existing email PDF was not found for backup: ${emailPdfPath}`,
+      `The current manifest does not contain ZB step images 1-14 in order: ${actualStepOrder.join(", ")}`,
     );
   }
 
-  await copyFile(emailPdfPath, emailBackupPdfPath);
   return {
-    path: emailBackupPdfPath,
-    created: true,
-    sizeBytes: (await stat(emailBackupPdfPath)).size,
+    generatedAt: manifest.generatedAt ?? null,
+    websiteImageCount: websiteImages.length,
+    pdfImageCount: pdfImages.length,
+    expectedSectionTitles,
+    expectedVegetationTitle,
+    forbiddenVegetationTitles,
+    stepFiveFolderName: stepFiveFolder.name,
+    stepFiveOrder: expectedStepOrder,
   };
 }
 
@@ -260,7 +348,7 @@ async function stopPreview(child) {
   }
 }
 
-async function waitForPdfView(page) {
+async function waitForPdfView(page, expectations) {
   await page.waitForFunction(
     () =>
       window.__PORTFOLIO_PDF_READY__ === true ||
@@ -268,9 +356,23 @@ async function waitForPdfView(page) {
     { timeout: 180_000 },
   );
 
-  const status = await page.evaluate(async () => {
+  const status = await page.evaluate(async (expected) => {
     await document.fonts.ready;
     const images = Array.from(document.querySelectorAll("img"));
+    const visibleText =
+      document.querySelector(".portfolio-pdf")?.textContent ?? "";
+    const sectionTitles = Array.from(
+      document.querySelectorAll(".pdf-section-header h2"),
+      (heading) => heading.textContent?.trim() ?? "",
+    );
+    const stepFiveCards = Array.from(
+      document.querySelectorAll(
+        '.pdf-process-step[data-pdf-step="5"] .pdf-media-card',
+      ),
+    );
+    const stepFiveOrder = stepFiveCards.map((card) =>
+      Number(card.getAttribute("data-sort-value")),
+    );
     const failedImages = images
       .filter((image) => !image.complete || !image.naturalWidth)
       .map(
@@ -294,12 +396,21 @@ async function waitForPdfView(page) {
       navigationCount: document.querySelectorAll("nav, .navigation").length,
       buttonCount: document.querySelectorAll("button").length,
       fontStatus: document.fonts.status,
+      sectionTitles,
+      stepFiveOrder,
+      hasExpectedVegetationTitle: visibleText.includes(
+        expected.expectedVegetationTitle,
+      ),
+      forbiddenVegetationTitles: expected.forbiddenVegetationTitles.filter(
+        (title) => visibleText.includes(title),
+      ),
+      bvids: visibleText.match(/BV[0-9A-Za-z]{10}/g) ?? [],
       variant:
         document.querySelector(".portfolio-pdf")?.getAttribute(
           "data-pdf-variant",
         ) ?? "unknown",
     };
-  });
+  }, expectations);
 
   if (!status.ready || status.errors.length) {
     throw new Error(
@@ -308,6 +419,42 @@ async function waitForPdfView(page) {
   }
   if (status.imageCount < 1) {
     throw new Error("PDF view did not render any images.");
+  }
+  if (status.imageCount !== expectations.pdfImageCount) {
+    throw new Error(
+      `PDF image count mismatch: expected ${expectations.pdfImageCount}, rendered ${status.imageCount}.`,
+    );
+  }
+  if (
+    JSON.stringify(status.sectionTitles) !==
+    JSON.stringify(expectations.expectedSectionTitles)
+  ) {
+    throw new Error(
+      `PDF section order mismatch:\n${status.sectionTitles.join("\n")}`,
+    );
+  }
+  if (!status.hasExpectedVegetationTitle) {
+    throw new Error(
+      `The current vegetation title is missing: ${expectations.expectedVegetationTitle}`,
+    );
+  }
+  if (status.forbiddenVegetationTitles.length) {
+    throw new Error(
+      `Outdated vegetation titles remain in the PDF view: ${status.forbiddenVegetationTitles.join(", ")}`,
+    );
+  }
+  if (
+    JSON.stringify(status.stepFiveOrder) !==
+    JSON.stringify(expectations.stepFiveOrder)
+  ) {
+    throw new Error(
+      `ZB step image order mismatch: ${status.stepFiveOrder.join(", ")}`,
+    );
+  }
+  if (status.bvids.length) {
+    throw new Error(
+      `The PDF view contains Bilibili identifiers: ${status.bvids.join(", ")}`,
+    );
   }
   if (
     status.videoCount ||
@@ -347,8 +494,37 @@ async function prepareEmailImages(page, profile) {
     ]);
 
     for (const image of images) {
-      const width = image.naturalWidth;
-      const height = image.naturalHeight;
+      const category = image.dataset.imageCategory ?? "A";
+      const sectionId = image.dataset.sectionId ?? "unknown";
+      let contentType = "asset";
+      let quality = qualityProfile.asset;
+
+      if (sectionId === "hero") {
+        contentType = "hero";
+        quality = qualityProfile.hero;
+      } else if (category === "C") {
+        contentType = "technical";
+        quality = qualityProfile.technical;
+      } else if (category === "D") {
+        contentType = "portrait";
+        quality = qualityProfile.portrait;
+      } else if (sceneSections.has(sectionId)) {
+        contentType = "scene";
+        quality = qualityProfile.scene;
+      } else if (assetSections.has(sectionId)) {
+        contentType = "asset";
+        quality = qualityProfile.asset;
+      }
+
+      const sourceWidth = image.naturalWidth;
+      const sourceHeight = image.naturalHeight;
+      const maximumWidth =
+        qualityProfile.maxWidths?.[contentType] ?? sourceWidth;
+      const width = Math.min(sourceWidth, maximumWidth);
+      const height = Math.max(
+        1,
+        Math.round((sourceHeight * width) / sourceWidth),
+      );
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
@@ -378,28 +554,6 @@ async function prepareEmailImages(page, profile) {
         }
       }
 
-      const category = image.dataset.imageCategory ?? "A";
-      const sectionId = image.dataset.sectionId ?? "unknown";
-      let contentType = "asset";
-      let quality = qualityProfile.asset;
-
-      if (sectionId === "hero") {
-        contentType = "hero";
-        quality = qualityProfile.hero;
-      } else if (category === "C") {
-        contentType = "technical";
-        quality = qualityProfile.technical;
-      } else if (category === "D") {
-        contentType = "portrait";
-        quality = qualityProfile.portrait;
-      } else if (sceneSections.has(sectionId)) {
-        contentType = "scene";
-        quality = qualityProfile.scene;
-      } else if (assetSections.has(sectionId)) {
-        contentType = "asset";
-        quality = qualityProfile.asset;
-      }
-
       const retainLimit =
         qualityProfile.retainSourceLimits?.[sectionId] ?? 0;
       const retainedCount = retainedBySection[sectionId] ?? 0;
@@ -410,8 +564,10 @@ async function prepareEmailImages(page, profile) {
           sectionId,
           category,
           contentType,
-          width,
-          height,
+          width: sourceWidth,
+          height: sourceHeight,
+          sourceWidth,
+          sourceHeight,
           quality: null,
           strategy: hasAlpha
             ? "alpha-source"
@@ -429,6 +585,8 @@ async function prepareEmailImages(page, profile) {
           contentType,
           width: image.naturalWidth,
           height: image.naturalHeight,
+          sourceWidth,
+          sourceHeight,
           quality: null,
           strategy: "alpha-source",
           encodedBytes: 0,
@@ -459,6 +617,8 @@ async function prepareEmailImages(page, profile) {
         contentType,
         width,
         height,
+        sourceWidth,
+        sourceHeight,
         quality,
         strategy: "jpeg",
         encodedBytes: blob.size,
@@ -541,7 +701,7 @@ async function exportVariant(page, {
     waitUntil: "networkidle0",
     timeout: 180_000,
   });
-  const status = await waitForPdfView(page);
+  const status = await waitForPdfView(page, pdfExpectations);
   const emailImagePreparation = emailProfile
     ? await prepareEmailImages(page, emailProfile)
     : null;
@@ -612,7 +772,6 @@ function chooseEmailCandidate(candidates) {
 }
 
 async function exportHighQualityEmailPdf(page) {
-  const backup = await backupExistingEmailPdf();
   await rm(emailCandidateDirectory, {
     recursive: true,
     force: true,
@@ -694,7 +853,6 @@ async function exportHighQualityEmailPdf(page) {
       ...selected,
       path: emailPdfPath,
       sizeBytes: finalStats.size,
-      backup,
       candidates: candidates.map((candidate) => ({
         profile: candidate.profile,
         sizeBytes: candidate.sizeBytes,
@@ -710,6 +868,7 @@ async function exportHighQualityEmailPdf(page) {
 }
 
 await mkdir(outputDirectory, { recursive: true });
+const pdfExpectations = await loadPdfExpectations();
 
 const browserPath = await firstExistingPath(browserCandidates);
 if (!browserPath) {
@@ -722,7 +881,9 @@ let previewProcess = null;
 let browser = null;
 
 try {
-  await runBuild();
+  if (!skipBuild) {
+    await runBuild();
+  }
   previewProcess = startPreview();
   await waitForPreview(previewProcess);
 
@@ -758,9 +919,7 @@ try {
         emailMode: false,
         destination: primaryPdfPath,
       });
-  const email = emailHighQualityOnly
-    ? await exportHighQualityEmailPdf(page)
-    : null;
+  const email = await exportHighQualityEmailPdf(page);
 
   console.log(
     `PDF_EXPORT_RESULT ${JSON.stringify({
@@ -768,6 +927,7 @@ try {
         ? "email-high-quality"
         : "primary",
       browserPath,
+      expectations: pdfExpectations,
       primary,
       email,
     })}`,

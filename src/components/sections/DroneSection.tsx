@@ -13,6 +13,11 @@ export function DroneSection({ media }: { media?: MediaFolder }) {
         index="04"
         eyebrow="DRONE OVERVIEW"
         title="无人机全景"
+        titleAside={
+          <span className="drone-section__viewing-note">
+            完整跑图与无人机视频可于网站末尾观看
+          </span>
+        }
         description="通过连续航拍镜头展示场景规模、空间层级与区域之间的衔接关系。"
       />
       {video ? (

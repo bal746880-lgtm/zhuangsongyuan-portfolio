@@ -49,6 +49,21 @@ export function ContactSection() {
               <li key={item}>{item}</li>
             ))}
           </ul>
+          <div className="contact-ai-capability">
+            <p className="eyebrow">SELF-DEVELOPED AI-ASSISTED ASSET PIPELINE</p>
+            <h4>自研AI辅助资产管线落地</h4>
+            <p>
+              独立设计并落地AI辅助资产生产流程，将实景参考分析、AI多视图生成、基础模型生成、Blender网格清理与减面、RizomUV重构、ZBrush雕刻、高低模烘焙及UE场景适配进行串联，并实际应用于《西福寺》的道具与植被树干资产制作。
+            </p>
+            <ul aria-label="AI辅助资产管线能力">
+              <li>AI辅助资产管线</li>
+              <li>AI多视图生成</li>
+              <li>网格清理与减面</li>
+              <li>UV重构</li>
+              <li>雕刻与烘焙</li>
+              <li>UE场景适配</li>
+            </ul>
+          </div>
         </div>
 
         <div className="contact-panel">

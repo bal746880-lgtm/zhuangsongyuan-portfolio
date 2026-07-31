@@ -30,6 +30,7 @@ export function ResponsiveImage({
   widthOverride,
   heightOverride,
   activationMargin = "450px 0px",
+  style,
   ...imageProps
 }: ResponsiveImageProps) {
   const imageRef = useRef<HTMLImageElement>(null);
@@ -69,6 +70,11 @@ export function ResponsiveImage({
 
   const activeSource = sourceOverride ?? file.src ?? file.url;
   const useResponsiveSources = !sourceOverride;
+  const resolvedWidth = widthOverride ?? file.width;
+  const resolvedHeight = heightOverride ?? file.height;
+  const resolvedAspectRatio =
+    file.aspectRatio ??
+    (resolvedWidth && resolvedHeight ? resolvedWidth / resolvedHeight : undefined);
 
   return (
     <img
@@ -77,8 +83,12 @@ export function ResponsiveImage({
       src={isActive ? activeSource : undefined}
       srcSet={isActive && useResponsiveSources ? file.srcSet : undefined}
       sizes={isActive && useResponsiveSources ? file.sizes : undefined}
-      width={widthOverride ?? file.width}
-      height={heightOverride ?? file.height}
+      width={resolvedWidth}
+      height={resolvedHeight}
+      style={{
+        aspectRatio: resolvedAspectRatio,
+        ...style,
+      }}
       loading={eager ? "eager" : "lazy"}
       decoding="async"
       fetchPriority={eager ? "high" : "low"}

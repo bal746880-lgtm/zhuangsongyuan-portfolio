@@ -11,6 +11,8 @@ export interface GalleryItem {
   alt: string;
   title: string;
   caption: string;
+  eyebrow?: string;
+  status?: string;
   order: number;
   type: "image" | "video";
   poster?: string;
@@ -21,6 +23,8 @@ interface CreateGalleryItemsOptions {
   altPrefix: string;
   caption?: string | ((file: MediaFile, index: number) => string);
   title?: (file: MediaFile, index: number) => string;
+  eyebrow?: (file: MediaFile, index: number) => string;
+  status?: (file: MediaFile, index: number) => string;
 }
 
 export function createGalleryItems(
@@ -44,6 +48,8 @@ export function createGalleryItems(
       alt: `${options.altPrefix}${title}`,
       title,
       caption,
+      eyebrow: options.eyebrow?.(file, index),
+      status: options.status?.(file, index),
       order: file.sortValue ?? index + 1,
       type: file.kind === "video" ? "video" : "image",
       aspectRatio: file.aspectRatio,
@@ -123,10 +129,16 @@ export function GalleryMediaItem({
       )}
       <figcaption>
         <div>
+          {item.eyebrow ? (
+            <p className="gallery-media-item__eyebrow">{item.eyebrow}</p>
+          ) : null}
           <p className="gallery-media-item__title">{item.title}</p>
           <p className="gallery-media-item__caption">
             {item.caption || "\u00A0"}
           </p>
+          {item.status ? (
+            <span className="gallery-media-item__status">{item.status}</span>
+          ) : null}
         </div>
         {showIndex ? (
           <span className="gallery-media-item__order">

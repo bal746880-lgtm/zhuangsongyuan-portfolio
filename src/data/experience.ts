@@ -38,9 +38,30 @@ export const profileFacts = [
     label: "当前方向",
     value: "UE5实时环境制作",
   },
+] as const;
+
+export const coreCapabilities = [
   {
-    label: "核心能力",
-    value: "场景规划 · 模块化资产 · 程序化材质 · 植被 · PCG",
+    title: "自研AI辅助资产落地管线",
+    english: "SELF-DEVELOPED AI-ASSISTED ASSET PIPELINE",
+    description:
+      "独立设计并整合参考分析、AI多视图生成、基础网格生成、人工网格清理与减面、UV重构、雕刻烘焙及UE适配流程，并实际应用于场景道具与植被树干资产制作。",
+  },
+  {
+    title: "植被资产全流程制作",
+    english: "VEGETATION ASSET PIPELINE",
+  },
+  {
+    title: "PCG程序化植被与环境散布",
+    english: "PCG VEGETATION & ENVIRONMENT SCATTERING",
+  },
+  {
+    title: "UE场景规划与地编落地",
+    english: "UE LEVEL ART & SCENE PLANNING",
+  },
+  {
+    title: "模块化资产与程序化材质",
+    english: "MODULAR ASSETS & PROCEDURAL MATERIALS",
   },
 ] as const;
 

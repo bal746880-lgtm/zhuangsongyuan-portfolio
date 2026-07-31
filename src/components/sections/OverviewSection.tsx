@@ -2,8 +2,8 @@ import type { MediaFolder } from "../../data/media";
 import { galleryLayouts } from "../../data/galleryLayouts";
 import {
   overviewParagraphs,
+  overviewResponsibilities,
   projectFacts,
-  responsibilities,
   software,
 } from "../../data/portfolio";
 import { imagesIn } from "../../utils/mediaHelpers";
@@ -62,8 +62,14 @@ export function OverviewSection({ media }: { media?: MediaFolder }) {
           <p className="eyebrow">RESPONSIBILITIES</p>
           <h3>主要职责</h3>
           <ul className="responsibility-grid">
-            {responsibilities.map((item) => (
-              <li key={item}>{item}</li>
+            {overviewResponsibilities.map((item) => (
+              <li
+                key={item.title}
+                className={"body" in item ? "responsibility-grid__feature" : undefined}
+              >
+                <strong>{item.title}</strong>
+                {"body" in item ? <span>{item.body}</span> : null}
+              </li>
             ))}
           </ul>
         </div>

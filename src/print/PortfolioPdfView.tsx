@@ -24,6 +24,7 @@ import {
   responsibilities,
   sectionCopy,
   software,
+  vegetationSourceFolderNumberByStep,
   vegetationSteps,
 } from "../data/portfolio";
 import { imageTitle, imagesIn } from "../utils/mediaHelpers";
@@ -222,6 +223,8 @@ function PdfMediaCard({
         file.imageCategory === "C" ? "pdf-media-card--technical" : ""
       }`}
       data-original-path={file.originalPath}
+      data-file-name={file.name}
+      data-sort-value={file.sortValue ?? undefined}
     >
       <div className="pdf-media-card__frame">
         <PdfImage file={file} alt={alt} emailMode={emailMode} />
@@ -612,19 +615,25 @@ function PdfVegetationPipeline({
 
       <div className="pdf-process-list">
         {vegetationSteps.map((step) => {
+          const sourceFolderNumber =
+            vegetationSourceFolderNumberByStep[step.stepNumber];
           const folder = folders.find(
-            (candidate) => candidate.sortValue === step.number,
+            (candidate) => candidate.sortValue === sourceFolderNumber,
           );
           const allImages = visibleImages(folder);
           const files =
-            step.number === 8 ? allImages.slice(0, 2) : allImages;
+            step.stepNumber === 8 ? allImages.slice(0, 2) : allImages;
 
           return (
-            <article className="pdf-process-step" key={step.number}>
+            <article
+              className="pdf-process-step"
+              data-pdf-step={step.stepNumber}
+              key={step.stepNumber}
+            >
               <header>
-                <span>{String(step.number).padStart(2, "0")}</span>
+                <span>{String(step.stepNumber).padStart(2, "0")}</span>
                 <div>
-                  <p className="pdf-eyebrow">PIPELINE STEP</p>
+                  <p className="pdf-eyebrow">{step.english}</p>
                   <h3>{step.title}</h3>
                   <p>{step.body}</p>
                   {"badge" in step && step.badge ? (
@@ -634,9 +643,9 @@ function PdfVegetationPipeline({
               </header>
               <PdfMediaGroup
                 files={files}
-                altPrefix={`植被流程 ${String(step.number).padStart(2, "0")}：`}
-                caption={`第 ${step.number} 步的过程与结果记录。`}
-                layout={vegetationStepLayout(step.number)}
+                altPrefix={`植被流程 ${String(step.stepNumber).padStart(2, "0")}：`}
+                caption={`第 ${step.stepNumber} 步的过程与结果记录。`}
+                layout={vegetationStepLayout(step.stepNumber)}
                 emailMode={emailMode}
               />
             </article>

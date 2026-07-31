@@ -22,7 +22,7 @@ export const overviewParagraphs = [
   },
   {
     lead: "建筑、材质与植被资产均采用独立制作流程。",
-    body: "木材、屋瓦、石材与地表材质主要使用 Substance Designer 从零制作；植被部分覆盖树干雕刻、枝叶模型、叶片贴图、SpeedTree组装、顶点数据处理、Billboard制作与UE植被材质。PCG系统主要用于岩石表面的苔藓分布和环境融合。",
+    body: "木材、屋瓦、石材与地表材质主要使用 Substance Designer 从零制作；植被部分覆盖树干雕刻、枝叶模型、叶片贴图、SpeedTree组装、顶点数据处理、Billboard制作与UE植被材质。PCG系统主要用于岩石表面的苔藓分布和环境融合。项目同时尝试将AI生成工具纳入规范化资产生产流程，在保留人工造型判断和游戏资产标准的前提下，提高前期方案验证与基础网格建立效率。",
   },
   {
     lead: "最终项目在 Unreal Engine 5.7 中完成实时组装与呈现。",
@@ -44,6 +44,25 @@ export const responsibilities = [
   "灯光、云雾与后期",
   "最终静帧与动态镜头",
 ];
+
+export const overviewResponsibilities = [
+  { title: "原画分析与场景转化" },
+  { title: "地图规划与白盒搭建" },
+  { title: "玩家路线与视觉节点设计" },
+  { title: "模块化建筑与环境道具" },
+  {
+    title: "AI辅助资产管线落地",
+    body: "搭建并落地自研AI辅助资产生产流程，将参考分析、AI多视图生成、基础网格生成、Blender网格优化、RizomUV重构、ZBrush雕刻、高低模烘焙与UE场景适配进行串联，用于道具及植被树干资产的快速验证与规范化落地。",
+  },
+  { title: "模型制作与 UV 拆分" },
+  { title: "程序化材质制作" },
+  { title: "植被资产全流程" },
+  { title: "Billboard 制作" },
+  { title: "岩石苔藓 PCG 系统" },
+  { title: "场景组装与环境布置" },
+  { title: "灯光、云雾与后期" },
+  { title: "最终静帧与动态镜头" },
+] as const;
 
 export const software = [
   "Unreal Engine 5.7",
@@ -71,47 +90,66 @@ export const sectionCopy = {
 
 export const vegetationSteps = [
   {
-    number: 1,
+    stepNumber: 1,
+    english: "NATURAL BRANCH FORM STUDY",
     title: "提取真实枝干形态",
     body: "通过真实植物和枝干参考，提取树木的整体轮廓、主干趋势、分叉方式和枝条节奏，为后续植被结构设计建立可靠基础。",
   },
   {
-    number: 2,
+    stepNumber: 2,
+    english: "AI-ASSISTED REFERENCE",
     title: "AI 生成参考",
     body: "使用 AI 生成内容作为形态探索和辅助参考，用于补充树冠轮廓、枝叶分布与季节表现。此处仅作为辅助参考，不代表最终资产或原创概念设计。",
     badge: "AI 辅助参考",
   },
   {
-    number: 3,
+    stepNumber: 3,
+    english: "SPEEDTREE ASSEMBLY & SHADER TEST",
     title: "SpeedTree 制作及材质球测试",
     body: "在 SpeedTree 中搭建树干、枝条和树冠结构，通过不同层级调整植物轮廓、体积、枝叶密度和整体节奏，并同步进行早期材质与受光测试。",
   },
   {
-    number: 4,
+    stepNumber: 4,
+    english: "LEAF NORMAL ITERATION",
     title: "法线迭代过程",
     body: "通过调整叶片在DCC软件中的不同折叠程度，对法线强度与叶片受光表现进行多轮迭代测试，比较不同折叠状态下叶片明暗层次、表面细节与整体体积感的变化，并确定适合最终植被资产的折叠程度与法线表现。",
   },
   {
-    number: 5,
-    title: "ZB雕刻树干，八猴高低模烘焙及Speedtree制作",
-    body: "在 ZBrush 中雕刻树干与主要枝条，重点处理主干形体、树皮走向、裂纹、表面起伏和结构转折，为后续贴图制作提供高模细节。",
+    stepNumber: 5,
+    english: "ZBRUSH SCULPTING & SPEEDTREE PRODUCTION",
+    title: "ZB雕刻Speedtree制作展示",
+    body: "展示树干资产在ZBrush中的雕刻结果，以及进入Speedtree后的树干、枝条和叶簇组装、节点结构与整体植被形态制作过程。",
   },
   {
-    number: 6,
-    title: "Substance Painter 贴图及规划",
-    body: "在 Substance Painter 中完成树干与枝条贴图制作，并结合 UV 和贴图规划控制木材颜色、粗糙度、法线、裂纹、磨损及苔藓等表面变化。",
+    stepNumber: 6,
+    english: "SUBSTANCE PAINTER TEXTURING",
+    title: "Substance Painter贴图及规划",
+    body: "在Substance Painter中完成树干与枝条贴图制作，并结合UV与贴图规划控制木材颜色、粗糙度、法线、裂纹、磨损及苔藓等表面变化。",
   },
   {
-    number: 7,
-    title: "iG Tools 风动制作",
-    body: "使用 iG Tools 建立植被风动数据，使主干、枝条与叶片具有不同层级的运动幅度与响应方式，并在 UE 中测试动态效果。当前素材仅包含导入设置截图。",
+    stepNumber: 7,
+    english: "IG TOOLS WIND SETUP",
+    title: "iG Tools风动制作",
+    body: "使用iG Tools建立植被风动数据，使主干、枝条与叶片具有不同层级的运动幅度与响应方式，并在UE中测试动态效果。",
   },
   {
-    number: 8,
+    stepNumber: 8,
+    english: "BLENDER SPHERICAL NORMAL WORKFLOW",
     title: "Blender 球形法线烘焙与法线混合",
     body: "通过 Blender 脚本将球形法线写入顶点数据中。在 UE 材质中，将切线法线提供的叶片细节与球形法线提供的树冠体积进行混合，使树冠受光更加统一，同时保留必要的表面细节。",
   },
 ] as const;
+
+export const vegetationSourceFolderNumberByStep = {
+  1: 1,
+  2: 2,
+  3: 3,
+  4: 4,
+  5: 5,
+  6: 7,
+  7: 8,
+  8: 9,
+} as const;
 
 export const pcgLabels = [
   "Surface Projection / 表面投射",

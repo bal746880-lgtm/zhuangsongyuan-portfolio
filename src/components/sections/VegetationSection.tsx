@@ -1,12 +1,20 @@
+import {
+  treeTrunkAiMediaCopy,
+  treeTrunkAiPipeline,
+} from "../../data/aiAssetPipelines";
 import type { MediaFolder } from "../../data/media";
 import { galleryLayouts } from "../../data/galleryLayouts";
-import { vegetationSteps } from "../../data/portfolio";
+import {
+  vegetationSourceFolderNumberByStep,
+  vegetationSteps,
+} from "../../data/portfolio";
 import { imagesIn } from "../../utils/mediaHelpers";
 import { sortByLeadingNumber } from "../../utils/mediaSort";
 import { ConfiguredMediaGroup } from "../media/ConfiguredMediaGroup";
 import { FullWidthMediaStack } from "../media/FullWidthMediaStack";
 import { MediaGrid } from "../media/MediaGrid";
 import { PlaceholderPanel } from "../ui/PlaceholderPanel";
+import { PipelineFlowBoard } from "../ui/PipelineFlowBoard";
 import { SectionHeader } from "../ui/SectionHeader";
 
 export function VegetationSection({ media }: { media?: MediaFolder }) {
@@ -28,7 +36,21 @@ export function VegetationSection({ media }: { media?: MediaFolder }) {
     sceneShowcase.map((image, index) => [image.relativePath, index + 1]),
   );
   const billboardImage = rootImages.find((image) => image.sortValue === 7);
-  const processFolders = sortByLeadingNumber(media?.children ?? []);
+  const treeTrunkAiFolder = media?.children.find((folder) =>
+    treeTrunkAiPipeline.folderMatcher(folder.name),
+  );
+  const treeTrunkAiImages = imagesIn(treeTrunkAiFolder);
+  const treeTrunkAiMedia = new Map(
+    treeTrunkAiImages.map((file, index) => [
+      file.relativePath,
+      treeTrunkAiMediaCopy(file.name, index),
+    ]),
+  );
+  const processFolders = sortByLeadingNumber(
+    (media?.children ?? []).filter(
+      (folder) => folder !== treeTrunkAiFolder,
+    ),
+  );
 
   return (
     <section className="content-section vegetation-section" id="vegetation">
@@ -93,6 +115,45 @@ export function VegetationSection({ media }: { media?: MediaFolder }) {
         )}
       </div>
 
+      <div className="subsection ai-pipeline-subsection">
+        <div className="subsection-heading">
+          <p className="eyebrow">{treeTrunkAiPipeline.eyebrow}</p>
+          <h3>{treeTrunkAiPipeline.title}</h3>
+          <p>{treeTrunkAiPipeline.subtitle}</p>
+        </div>
+        <PipelineFlowBoard
+          steps={treeTrunkAiPipeline.steps}
+          description={treeTrunkAiPipeline.boardDescription}
+          ariaLabel="树干AI辅助资产管线流程"
+        />
+        {treeTrunkAiImages.length ? (
+          <ConfiguredMediaGroup
+            files={treeTrunkAiImages}
+            config={galleryLayouts.treeTrunkAiPipeline}
+            sectionId="tree-trunk-ai-pipeline-gallery"
+            itemTitle={(file, index) =>
+              treeTrunkAiMedia.get(file.relativePath)?.title ?? `图 ${index + 1}`
+            }
+            itemEyebrow={(file) =>
+              treeTrunkAiMedia.get(file.relativePath)?.english ?? ""
+            }
+            itemCaption={(file) =>
+              treeTrunkAiMedia.get(file.relativePath)?.description ?? ""
+            }
+            itemStatus={(file) =>
+              treeTrunkAiMedia.get(file.relativePath)?.status ?? ""
+            }
+            altPrefix="树干AI辅助资产管线："
+            className="large-horizontal-gallery ai-pipeline-gallery"
+          />
+        ) : (
+          <PlaceholderPanel
+            label="树干AI辅助资产管线素材待接入"
+            detail="当前未识别到树干AI管线文件夹中的图片。"
+          />
+        )}
+      </div>
+
       <header className="vegetation-process-intro">
         <p className="eyebrow">VEGETATION PRODUCTION PIPELINE</p>
         <h3>植被全流程制作过程展示</h3>
@@ -103,22 +164,25 @@ export function VegetationSection({ media }: { media?: MediaFolder }) {
 
       <div className="process-list">
         {vegetationSteps.map((step) => {
+          const sourceFolderNumber =
+            vegetationSourceFolderNumberByStep[step.stepNumber];
           const folder = processFolders.find(
-            (candidate) => candidate.sortValue === step.number,
+            (candidate) => candidate.sortValue === sourceFolderNumber,
           );
           const allStepImages = imagesIn(folder);
           const stepImages =
-            step.number === 8 ? allStepImages.slice(0, 2) : allStepImages;
-          const stepLayout = galleryLayouts.vegetationSteps[step.number];
+            step.stepNumber === 8 ? allStepImages.slice(0, 2) : allStepImages;
+          const stepLayout =
+            galleryLayouts.vegetationSteps[step.stepNumber];
 
           return (
-            <article className="process-step" key={step.number}>
+            <article className="process-step" key={step.stepNumber}>
               <header className="process-step__header">
                 <span className="process-step__number">
-                  {String(step.number).padStart(2, "0")}
+                  {String(step.stepNumber).padStart(2, "0")}
                 </span>
                 <div>
-                  <p className="eyebrow">PIPELINE STEP</p>
+                  <p className="eyebrow">{step.english}</p>
                   <h3>{step.title}</h3>
                   <p>{step.body}</p>
                   {"badge" in step && step.badge ? (
@@ -130,11 +194,17 @@ export function VegetationSection({ media }: { media?: MediaFolder }) {
                 <ConfiguredMediaGroup
                   files={stepImages}
                   config={stepLayout}
-                  sectionId={`vegetation-step-${step.number}-media`}
-                  altPrefix={`植被流程 ${String(step.number).padStart(2, "0")}：`}
-                  itemCaption={`第 ${step.number} 步的过程与结果记录。`}
+                  sectionId={`vegetation-step-${step.stepNumber}-media`}
+                  altPrefix={`植被流程 ${String(step.stepNumber).padStart(2, "0")} · ${step.title}：`}
+                  itemCaption={
+                    step.stepNumber === 5
+                      ? step.body
+                      : `第 ${step.stepNumber} 步的过程与结果记录。`
+                  }
                   className={
-                    stepLayout.layoutMode === "horizontal"
+                    step.stepNumber === 4
+                      ? "leaf-normal-iteration-row"
+                      : stepLayout.layoutMode === "horizontal"
                       ? "large-horizontal-gallery process-horizontal-gallery"
                       : ""
                   }
@@ -142,7 +212,7 @@ export function VegetationSection({ media }: { media?: MediaFolder }) {
               ) : (
                 <PlaceholderPanel
                   label="过程素材待补充"
-                  detail={`未在第 ${step.number} 步文件夹中读取到图片。`}
+                  detail={`未在第 ${step.stepNumber} 步对应文件夹中读取到图片。`}
                 />
               )}
             </article>

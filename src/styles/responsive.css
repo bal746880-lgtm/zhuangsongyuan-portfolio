@@ -21,6 +21,33 @@
   .media-grid--process.media-grid--dense {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .pipeline-flow-board__steps {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .pipeline-flow-board__steps li {
+    padding: 0 0 24px;
+  }
+
+  .pipeline-flow-board__number-row {
+    display: block;
+  }
+
+  .pipeline-flow-board__connector {
+    position: absolute;
+    top: 24px;
+    bottom: 0;
+    left: -12px;
+    width: 1px;
+    height: auto;
+    margin: 0;
+  }
+
+  .pipeline-flow-board__copy {
+    margin-top: 10px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -145,6 +172,18 @@
     font-size: clamp(1.85rem, 9vw, 2.8rem);
   }
 
+  .section-header__title-line {
+    display: block;
+  }
+
+  .section-header__title-aside {
+    margin-top: 12px;
+  }
+
+  .drone-section__viewing-note {
+    font-size: clamp(0.875rem, 3.7vw, 1rem);
+  }
+
   .section-header__index {
     padding-top: 0;
   }
@@ -214,6 +253,14 @@
 
   .responsibility-grid {
     grid-template-columns: 1fr;
+  }
+
+  .responsibility-grid__feature {
+    grid-column: auto;
+  }
+
+  .pipeline-flow-board {
+    padding: 22px 18px;
   }
 
   .process-step__header {
@@ -296,9 +343,17 @@
     height: calc(100vh - 32px);
   }
 
-  .lightbox__close {
+  .lightbox__controls {
     top: 8px;
     right: 8px;
+    max-width: calc(100vw - 16px);
+  }
+
+  .lightbox__controls button,
+  .lightbox__controls output {
+    min-width: 36px;
+    min-height: 36px;
+    padding-inline: 7px;
   }
 }
 

@@ -14,8 +14,6 @@ export function CareerTimeline({ entries, awards }: CareerTimelineProps) {
       </header>
 
       <div className="career-timeline__track">
-        <span className="career-timeline__progress" aria-hidden="true" />
-
         {entries.map((entry, index) => (
           <article
             className={`career-timeline__node ${
@@ -23,8 +21,15 @@ export function CareerTimeline({ entries, awards }: CareerTimelineProps) {
             }`}
             key={entry.time}
           >
-            <time dateTime={entry.time}>{entry.time}</time>
-            <span className="career-timeline__marker" aria-hidden="true" />
+            <time className="career-timeline__year" dateTime={entry.time}>
+              {entry.time}
+            </time>
+            <div className="career-timeline__marker-row" aria-hidden="true">
+              <span className="career-timeline__marker" />
+              {index < entries.length - 1 ? (
+                <span className="career-timeline__connector" />
+              ) : null}
+            </div>
 
             <div className="career-timeline__content">
               <p className="career-timeline__number" aria-hidden="true">

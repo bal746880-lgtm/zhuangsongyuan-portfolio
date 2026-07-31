@@ -1,6 +1,5 @@
 import {
   type CSSProperties,
-  type KeyboardEvent,
   useCallback,
   useEffect,
   useRef,
@@ -27,8 +26,15 @@ interface ScrollDrivenGalleryProps {
 
 interface GalleryGeometry {
   start: number;
-  scrollDistance: number;
+  scrollRange: number;
   maxTranslate: number;
+  isValid: boolean;
+}
+
+interface GalleryMeasurement {
+  stickyWidth: number;
+  stickyHeight: number;
+  trackWidth: number;
 }
 
 type GalleryStyle = CSSProperties & {
@@ -55,13 +61,15 @@ export function ScrollDrivenGallery({
   const trackRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLSpanElement>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const snapTimeoutRef = useRef<number | null>(null);
-  const snapReleaseTimeoutRef = useRef<number | null>(null);
-  const isSnapSuppressedRef = useRef(false);
+  const resizeFrameRef = useRef<number | null>(null);
+  const lastTranslateRef = useRef<number | null>(null);
+  const lastProgressRef = useRef<number | null>(null);
+  const lastMeasurementRef = useRef<GalleryMeasurement | null>(null);
   const geometryRef = useRef<GalleryGeometry>({
     start: 0,
-    scrollDistance: 0,
+    scrollRange: 0,
     maxTranslate: 0,
+    isValid: false,
   });
   const [isScrollDriven, setIsScrollDriven] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -71,19 +79,62 @@ export function ScrollDrivenGallery({
     "--gallery-media-height": maxMediaHeight,
   };
 
+  const resetDesktopPosition = useCallback(() => {
+    const track = trackRef.current;
+    if (track && lastTranslateRef.current !== 0) {
+      track.style.transform = "translate3d(0px, 0, 0)";
+    }
+    if (progressRef.current && lastProgressRef.current !== 0) {
+      progressRef.current.style.transform = "scaleX(0)";
+    }
+    lastTranslateRef.current = 0;
+    lastProgressRef.current = 0;
+    setActiveIndex((current) => (current === 0 ? current : 0));
+  }, []);
+
   const updateDesktopPosition = useCallback(() => {
     const track = trackRef.current;
     if (!track || !isScrollDriven) return;
 
-    const { start, scrollDistance, maxTranslate } = geometryRef.current;
-    const progress =
-      scrollDistance > 0
-        ? Math.min(1, Math.max(0, (window.scrollY - start) / scrollDistance))
-        : 0;
+    const { start, scrollRange, maxTranslate, isValid } = geometryRef.current;
+    if (
+      !isValid ||
+      !Number.isFinite(start) ||
+      !Number.isFinite(scrollRange) ||
+      !Number.isFinite(maxTranslate) ||
+      scrollRange <= 0 ||
+      maxTranslate <= 0
+    ) {
+      resetDesktopPosition();
+      return;
+    }
 
-    track.style.transform = `translate3d(${-progress * maxTranslate}px, 0, 0)`;
-    if (progressRef.current) {
+    const pageScrollY = Number.isFinite(window.scrollY) ? window.scrollY : 0;
+    const localScroll = pageScrollY - start;
+    const rawProgress = localScroll / scrollRange;
+    const progress = Number.isFinite(rawProgress)
+      ? Math.min(1, Math.max(0, rawProgress))
+      : 0;
+    const nextTranslate = -progress * maxTranslate;
+
+    if (
+      lastTranslateRef.current === null ||
+      progress === 0 ||
+      progress === 1 ||
+      Math.abs(nextTranslate - lastTranslateRef.current) >= 0.5
+    ) {
+      track.style.transform = `translate3d(${nextTranslate}px, 0, 0)`;
+      lastTranslateRef.current = nextTranslate;
+    }
+    if (
+      progressRef.current &&
+      (lastProgressRef.current === null ||
+        progress === 0 ||
+        progress === 1 ||
+        Math.abs(progress - lastProgressRef.current) >= 0.0005)
+    ) {
       progressRef.current.style.transform = `scaleX(${progress})`;
+      lastProgressRef.current = progress;
     }
 
     const nextIndex = Math.min(
@@ -91,7 +142,7 @@ export function ScrollDrivenGallery({
       Math.max(0, Math.round(progress * (items.length - 1))),
     );
     setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
-  }, [isScrollDriven, items.length]);
+  }, [isScrollDriven, items.length, resetDesktopPosition]);
 
   const scheduleDesktopUpdate = useCallback(() => {
     if (animationFrameRef.current !== null) return;
@@ -101,73 +152,9 @@ export function ScrollDrivenGallery({
     });
   }, [updateDesktopPosition]);
 
-  const suppressSnapUntilScrollEnd = useCallback(() => {
-    isSnapSuppressedRef.current = true;
-
-    if (snapTimeoutRef.current !== null) {
-      window.clearTimeout(snapTimeoutRef.current);
-      snapTimeoutRef.current = null;
-    }
-    if (snapReleaseTimeoutRef.current !== null) {
-      window.clearTimeout(snapReleaseTimeoutRef.current);
-    }
-
-    snapReleaseTimeoutRef.current = window.setTimeout(() => {
-      isSnapSuppressedRef.current = false;
-      snapReleaseTimeoutRef.current = null;
-    }, 4000);
-  }, []);
-
-  const releaseSnapSuppression = useCallback(() => {
-    if (!isSnapSuppressedRef.current) return;
-    isSnapSuppressedRef.current = false;
-    if (snapReleaseTimeoutRef.current !== null) {
-      window.clearTimeout(snapReleaseTimeoutRef.current);
-      snapReleaseTimeoutRef.current = null;
-    }
-  }, []);
-
-  const scheduleDesktopSnap = useCallback(() => {
-    if (
-      !isScrollDriven ||
-      items.length <= 1 ||
-      isSnapSuppressedRef.current ||
-      document.documentElement.dataset.anchorNavigation === "true"
-    ) {
-      return;
-    }
-
-    if (snapTimeoutRef.current !== null) {
-      window.clearTimeout(snapTimeoutRef.current);
-    }
-
-    snapTimeoutRef.current = window.setTimeout(() => {
-      snapTimeoutRef.current = null;
-      const { start, scrollDistance } = geometryRef.current;
-      const localScroll = window.scrollY - start;
-
-      if (
-        scrollDistance <= 0 ||
-        localScroll < 0 ||
-        localScroll > scrollDistance
-      ) {
-        return;
-      }
-
-      const progress = localScroll / scrollDistance;
-      const nearestIndex = Math.round(progress * (items.length - 1));
-      const target =
-        start + (nearestIndex / (items.length - 1)) * scrollDistance;
-
-      if (Math.abs(window.scrollY - target) < 3) return;
-      window.scrollTo({ top: target, behavior: "smooth" });
-    }, 140);
-  }, [isScrollDriven, items.length]);
-
   const handleDesktopScroll = useCallback(() => {
     scheduleDesktopUpdate();
-    scheduleDesktopSnap();
-  }, [scheduleDesktopSnap, scheduleDesktopUpdate]);
+  }, [scheduleDesktopUpdate]);
 
   const recalculate = useCallback(() => {
     const stage = stageRef.current;
@@ -177,40 +164,93 @@ export function ScrollDrivenGallery({
 
     if (!isScrollDriven) {
       stage.style.height = "";
-      track.style.transform = "";
+      lastMeasurementRef.current = null;
       geometryRef.current = {
         start: 0,
-        scrollDistance: 0,
+        scrollRange: 0,
         maxTranslate: 0,
+        isValid: false,
       };
+      resetDesktopPosition();
+      track.style.transform = "";
+      lastTranslateRef.current = null;
       return;
     }
 
-    const stickyTop = Number.parseFloat(window.getComputedStyle(sticky).top) || 0;
-    const stickyHeight = sticky.clientHeight;
-    const maxTranslate = Math.max(0, track.scrollWidth - sticky.clientWidth);
+    const parsedStickyTop = Number.parseFloat(
+      window.getComputedStyle(sticky).top,
+    );
+    const stickyTop = Number.isFinite(parsedStickyTop) ? parsedStickyTop : 0;
+    const measuredStickyHeight = sticky.clientHeight;
+    const stickyHeight =
+      measuredStickyHeight > 0
+        ? measuredStickyHeight
+        : Math.max(0, window.innerHeight - stickyTop);
+    const stickyWidth = sticky.clientWidth;
+    const trackWidth = track.scrollWidth;
+    const stageTopInViewport = stage.getBoundingClientRect().top;
+    const pageScrollY = Number.isFinite(window.scrollY) ? window.scrollY : 0;
+    if (isSectionActive) {
+      lastMeasurementRef.current = {
+        stickyWidth,
+        stickyHeight: measuredStickyHeight,
+        trackWidth,
+      };
+    }
     const pixelsPerPanel = Math.min(
       280,
       Math.max(200, window.innerHeight * 0.22),
     );
-    const scrollDistance =
-      maxTranslate > 0 && items.length > 1
-        ? pixelsPerPanel * (items.length - 1)
-        : 0;
-    const nextHeight = Math.ceil(stickyHeight + scrollDistance);
+    const plannedScrollRange =
+      items.length > 1 ? pixelsPerPanel * (items.length - 1) : 0;
+    const nextHeight = Math.ceil(stickyHeight + plannedScrollRange);
 
-    if (stage.style.height !== `${nextHeight}px`) {
+    if (Number.isFinite(nextHeight) && stage.style.height !== `${nextHeight}px`) {
       stage.style.height = `${nextHeight}px`;
     }
 
+    const maxTranslate = Math.max(0, trackWidth - stickyWidth);
+    const hasValidDimensions =
+      stickyWidth > 0 &&
+      stickyHeight > 0 &&
+      trackWidth > 0 &&
+      Number.isFinite(stageTopInViewport) &&
+      Number.isFinite(maxTranslate) &&
+      Number.isFinite(plannedScrollRange);
+    const hasHorizontalOverflow = maxTranslate > 0;
+    const scrollRange =
+      hasValidDimensions && hasHorizontalOverflow ? plannedScrollRange : 0;
+    const absoluteStageTop = pageScrollY + stageTopInViewport;
+    const start = absoluteStageTop - stickyTop;
+    const isValid =
+      isSectionActive &&
+      hasValidDimensions &&
+      Number.isFinite(start) &&
+      scrollRange > 0;
+
     geometryRef.current = {
-      start:
-        stage.getBoundingClientRect().top + window.scrollY - stickyTop,
-      scrollDistance,
+      start: isValid ? start : 0,
+      scrollRange,
       maxTranslate,
+      isValid,
     };
-    scheduleDesktopUpdate();
-  }, [isScrollDriven, items.length, scheduleDesktopUpdate]);
+    if (isValid) scheduleDesktopUpdate();
+    else resetDesktopPosition();
+  }, [
+    isScrollDriven,
+    isSectionActive,
+    items.length,
+    resetDesktopPosition,
+    scheduleDesktopUpdate,
+  ]);
+
+  const scheduleRecalculate = useCallback(() => {
+    if (resizeFrameRef.current !== null) return;
+    resizeFrameRef.current = window.requestAnimationFrame(() => {
+      resizeFrameRef.current = null;
+      recalculate();
+    });
+  }, [recalculate]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -248,40 +288,13 @@ export function ScrollDrivenGallery({
   }, []);
 
   useEffect(() => {
-    const handleAnchorNavigation = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const anchor = target.closest<HTMLAnchorElement>('a[href^="#"]');
-      if (!anchor) return;
-      suppressSnapUntilScrollEnd();
-    };
-
-    document.addEventListener("click", handleAnchorNavigation, true);
-    window.addEventListener("hashchange", suppressSnapUntilScrollEnd);
-    window.addEventListener("scrollend", releaseSnapSuppression);
-
-    return () => {
-      document.removeEventListener("click", handleAnchorNavigation, true);
-      window.removeEventListener("hashchange", suppressSnapUntilScrollEnd);
-      window.removeEventListener("scrollend", releaseSnapSuppression);
-      if (snapReleaseTimeoutRef.current !== null) {
-        window.clearTimeout(snapReleaseTimeoutRef.current);
-        snapReleaseTimeoutRef.current = null;
-      }
-    };
-  }, [releaseSnapSuppression, suppressSnapUntilScrollEnd]);
-
-  useEffect(() => {
     const stage = stageRef.current;
     const sticky = stickyRef.current;
     const track = trackRef.current;
     if (!stage || !sticky || !track) return;
 
-    const resizeObserver = new ResizeObserver(recalculate);
-    resizeObserver.observe(sticky);
-    resizeObserver.observe(track);
-    window.addEventListener("resize", recalculate);
-    stage.addEventListener("load", recalculate, true);
+    window.addEventListener("resize", scheduleRecalculate);
+    let resizeObserver: ResizeObserver | null = null;
 
     if (isScrollDriven) {
       window.addEventListener("scroll", handleDesktopScroll, {
@@ -289,59 +302,57 @@ export function ScrollDrivenGallery({
       });
     }
 
+    if (
+      isScrollDriven &&
+      isSectionActive &&
+      "ResizeObserver" in window
+    ) {
+      lastMeasurementRef.current = {
+        stickyWidth: sticky.clientWidth,
+        stickyHeight: sticky.clientHeight,
+        trackWidth: track.scrollWidth,
+      };
+      resizeObserver = new ResizeObserver(() => {
+        const previous = lastMeasurementRef.current;
+        const nextMeasurement: GalleryMeasurement = {
+          stickyWidth: sticky.clientWidth,
+          stickyHeight: sticky.clientHeight,
+          trackWidth: track.scrollWidth,
+        };
+        const changed =
+          !previous ||
+          Math.abs(nextMeasurement.stickyWidth - previous.stickyWidth) > 1 ||
+          Math.abs(nextMeasurement.stickyHeight - previous.stickyHeight) > 1 ||
+          Math.abs(nextMeasurement.trackWidth - previous.trackWidth) > 1;
+        if (!changed) return;
+        lastMeasurementRef.current = nextMeasurement;
+        scheduleRecalculate();
+      });
+      resizeObserver.observe(sticky);
+      resizeObserver.observe(track);
+    }
+
     recalculate();
     return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", recalculate);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", scheduleRecalculate);
       window.removeEventListener("scroll", handleDesktopScroll);
-      stage.removeEventListener("load", recalculate, true);
       if (animationFrameRef.current !== null) {
         window.cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
-      if (snapTimeoutRef.current !== null) {
-        window.clearTimeout(snapTimeoutRef.current);
-        snapTimeoutRef.current = null;
+      if (resizeFrameRef.current !== null) {
+        window.cancelAnimationFrame(resizeFrameRef.current);
+        resizeFrameRef.current = null;
       }
     };
-  }, [handleDesktopScroll, isScrollDriven, recalculate]);
-
-  const moveToIndex = (nextIndex: number) => {
-    const clampedIndex = Math.min(
-      items.length - 1,
-      Math.max(0, nextIndex),
-    );
-
-    if (isScrollDriven) {
-      suppressSnapUntilScrollEnd();
-      const { start, scrollDistance } = geometryRef.current;
-      const progress =
-        items.length > 1 ? clampedIndex / (items.length - 1) : 0;
-      window.scrollTo({
-        top: start + progress * scrollDistance,
-        behavior: "smooth",
-      });
-      return;
-    }
-
-    const panel = trackRef.current?.children[clampedIndex] as
-      | HTMLElement
-      | undefined;
-    panel?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "start",
-    });
-    setActiveIndex(clampedIndex);
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    event.preventDefault();
-    moveToIndex(
-      activeIndex + (event.key === "ArrowRight" ? 1 : -1),
-    );
-  };
+  }, [
+    handleDesktopScroll,
+    isScrollDriven,
+    isSectionActive,
+    recalculate,
+    scheduleRecalculate,
+  ]);
 
   const handleNativeScroll = () => {
     if (isScrollDriven || animationFrameRef.current !== null) return;
@@ -389,8 +400,6 @@ export function ScrollDrivenGallery({
           ref={stickyRef}
           role="region"
           aria-label={title || "横向图片画廊"}
-          tabIndex={0}
-          onKeyDown={handleKeyDown}
         >
           <div
             className="scroll-driven-gallery__track"
@@ -407,7 +416,6 @@ export function ScrollDrivenGallery({
                 enableLightbox={enableLightbox}
                 showIndex={showIndex}
                 mode="horizontal"
-                onMediaLoad={recalculate}
                 shouldLoad={
                   isSectionActive && Math.abs(index - activeIndex) <= 1
                 }

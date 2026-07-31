@@ -18,6 +18,8 @@ interface ConfiguredMediaGroupProps {
   caption?: string;
   itemCaption?: string | ((file: MediaFile, index: number) => string);
   itemTitle?: (file: MediaFile, index: number) => string;
+  itemEyebrow?: (file: MediaFile, index: number) => string;
+  itemStatus?: (file: MediaFile, index: number) => string;
   altPrefix: string;
   showIndex?: boolean;
   enableLightbox?: boolean;
@@ -32,6 +34,8 @@ export function ConfiguredMediaGroup({
   caption = "",
   itemCaption,
   itemTitle,
+  itemEyebrow,
+  itemStatus,
   altPrefix,
   showIndex = true,
   enableLightbox = true,
@@ -41,6 +45,8 @@ export function ConfiguredMediaGroup({
     altPrefix,
     caption: itemCaption,
     title: itemTitle,
+    eyebrow: itemEyebrow,
+    status: itemStatus,
   });
 
   if (!items.length) return null;

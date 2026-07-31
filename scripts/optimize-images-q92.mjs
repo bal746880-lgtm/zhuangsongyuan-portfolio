@@ -36,15 +36,18 @@ const reportMarkdownPath = path.join(
   outputsRoot,
   "q92-image-optimization-report.md",
 );
-const onlyPrefixOption = process.argv.find((argument) =>
-  argument.startsWith("--only-prefix="),
-);
-const onlyPrefix = onlyPrefixOption
-  ? toPosix(onlyPrefixOption.slice("--only-prefix=".length)).replace(/\/+$/, "")
-  : null;
+const onlyPrefixes = process.argv
+  .filter((argument) => argument.startsWith("--only-prefix="))
+  .map((argument) =>
+    toPosix(argument.slice("--only-prefix=".length)).replace(/\/+$/, ""),
+  );
 
-if (onlyPrefix && !onlyPrefix.startsWith("public/portfolio/")) {
-  throw new Error("--only-prefix must stay inside public/portfolio.");
+if (
+  onlyPrefixes.some(
+    (onlyPrefix) => !onlyPrefix.startsWith("public/portfolio/"),
+  )
+) {
+  throw new Error("--only-prefix values must stay inside public/portfolio.");
 }
 
 const roleSettings = {
@@ -207,6 +210,13 @@ function classifyUsage(chapterName, file) {
     };
   }
   if (chapterName === "模块化建筑与道具") {
+    if (relativePath.includes("道具AI") && relativePath.includes("管线")) {
+      return {
+        sectionId: "modular",
+        imageCategory: "C",
+        displayRole: "technicalHorizontal",
+      };
+    }
     return {
       sectionId: "modular",
       imageCategory: "A",
@@ -244,6 +254,13 @@ function classifyUsage(chapterName, file) {
     };
   }
   if (chapterName === "植被全流程与Billboard制作") {
+    if (relativePath.includes("树干AI") && relativePath.includes("管线")) {
+      return {
+        sectionId: "vegetation",
+        imageCategory: "C",
+        displayRole: "technicalHorizontal",
+      };
+    }
     const step = vegetationStep(file);
     if (step === null) {
       if (sortValue === 7) {
@@ -555,8 +572,16 @@ async function encodeAtAcceptedQuality({
   category,
   hasIcc,
 }) {
+  const needsExtraTextClarity =
+    category === "C" && /Rizom.*UV/i.test(relativePath);
   const qualities =
-    category === "C" ? [96] : category === "B" ? [92, 94, 96] : [92, 94, 96];
+    category === "C"
+      ? needsExtraTextClarity
+        ? [98]
+        : [96]
+      : category === "B"
+        ? [92, 94, 96]
+        : [92, 94, 96];
   const threshold = qualityThreshold(category);
   let selected = null;
   const attempts = [];
@@ -591,7 +616,7 @@ async function encodeAtAcceptedQuality({
       ),
       variants,
     });
-    if (accepted || quality === 96) {
+    if (accepted || quality === qualities.at(-1)) {
       selected = attempts.at(-1);
       break;
     }
@@ -666,17 +691,21 @@ const usedEntries = allManifestEntries
       usage: classifyUsage(chapterName, file),
     };
   });
-const existingReport = onlyPrefix
+const existingReport = onlyPrefixes.length
   ? await readJson(reportJsonPath).catch(() => null)
   : null;
-const entriesToProcess = onlyPrefix
+const entriesToProcess = onlyPrefixes.length
   ? usedEntries.filter((entry) =>
-      entry.originalProjectPath.startsWith(`${onlyPrefix}/`),
+      onlyPrefixes.some((onlyPrefix) =>
+        entry.originalProjectPath.startsWith(`${onlyPrefix}/`),
+      ),
     )
   : usedEntries;
 
-if (onlyPrefix && entriesToProcess.length === 0) {
-  throw new Error(`No displayed images matched ${onlyPrefix}`);
+if (onlyPrefixes.length && entriesToProcess.length === 0) {
+  throw new Error(
+    `No displayed images matched ${onlyPrefixes.join(", ")}`,
+  );
 }
 
 const sectionBaselines = sectionDefinitions.map(([sectionId, label]) =>
@@ -806,7 +835,7 @@ const processedByOriginalPath = new Map(
 const existingByOriginalPath = new Map(
   (existingReport?.images ?? []).map((image) => [image.originalPath, image]),
 );
-const images = onlyPrefix
+const images = onlyPrefixes.length
   ? usedEntries.map(
       (entry) =>
         processedByOriginalPath.get(entry.originalProjectPath) ??
@@ -890,7 +919,7 @@ const qualityCounts = images.reduce(
     counts[`q${image.quality}`] += 1;
     return counts;
   },
-  { q92: 0, q94: 0, q96: 0, lossless: 0 },
+  { q92: 0, q94: 0, q96: 0, q98: 0, lossless: 0 },
 );
 const upgradedImages = images.filter(
   (image) =>
@@ -958,7 +987,7 @@ const markdown = [
   `- 桌面默认响应式版本总大小：${formatBytes(report.summary.optimizedDisplayTotalBytes)}（节省 ${formatPercent(report.summary.displaySavingsPercent)}）`,
   `- 手机默认响应式版本总大小：${formatBytes(report.summary.optimizedMobileTotalBytes)}（节省 ${formatPercent(report.summary.mobileSavingsPercent)}）`,
   `- 最终构建所需全部响应式与Lightbox版本：${formatBytes(report.summary.responsiveVariantTotalBytes)}`,
-  `- 质量使用：Q92 ${qualityCounts.q92} 张，Q94 ${qualityCounts.q94} 张，Q96 ${qualityCounts.q96} 张，无损回退 ${qualityCounts.lossless} 张`,
+  `- 质量使用：Q92 ${qualityCounts.q92} 张，Q94 ${qualityCounts.q94} 张，Q96 ${qualityCounts.q96} 张，Q98 ${qualityCounts.q98} 张，无损回退 ${qualityCounts.lossless} 张`,
   "",
   "## 章节基准与优化结果",
   "",
@@ -993,7 +1022,7 @@ const markdown = [
   "## 说明",
   "",
   "- 所有候选均保留原始比例，禁止放大，没有裁切、锐化或降噪。",
-  "- 技术截图、节点图、软件界面和流程图使用Q96；其他图片从Q92起步并通过阈值自动升级。",
+  "- 技术截图、节点图、软件界面和流程图使用Q96；包含密集小字的RizomUV界面使用Q98；其他图片从Q92起步并通过阈值自动升级。",
   "- Alpha使用100质量，报告逐尺寸记录透明通道误差。",
   "- Lightbox只使用不超过2560px的最大版本，并仅在点击后请求。",
   "",

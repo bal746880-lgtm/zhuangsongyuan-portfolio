@@ -185,6 +185,37 @@ ul {
   line-height: 1.18;
 }
 
+.section-header__title-line {
+  display: flex;
+  gap: clamp(18px, 2vw, 34px);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.section-header__title-aside {
+  min-width: min(100%, 280px);
+}
+
+.drone-section__viewing-note {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: #aaa8a1;
+  font-size: clamp(0.88rem, 1vw, 1.08rem);
+  font-weight: 430;
+  letter-spacing: 0.015em;
+  line-height: 1.5;
+}
+
+.drone-section__viewing-note::before {
+  display: block;
+  width: 22px;
+  height: 1px;
+  flex: none;
+  background: #77746d;
+  content: "";
+}
+
 .section-header__description {
   max-width: 980px;
   margin-top: var(--space-4);
@@ -578,7 +609,7 @@ ul {
   padding: 0;
   overflow: hidden;
   background: #181818;
-  cursor: zoom-in;
+  cursor: pointer;
 }
 
 .media-card img {
@@ -688,6 +719,30 @@ ul {
   color: var(--color-text-muted);
 }
 
+.responsibility-grid li strong {
+  display: block;
+  font-weight: 430;
+}
+
+.responsibility-grid__feature {
+  grid-column: span 2;
+  padding-right: clamp(18px, 3vw, 42px) !important;
+}
+
+.responsibility-grid__feature strong {
+  color: var(--color-text);
+  font-weight: 560 !important;
+}
+
+.responsibility-grid__feature span {
+  display: block;
+  max-width: 760px;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.72;
+}
+
 .software-list {
   border-top: 1px solid var(--color-line);
 }
@@ -774,6 +829,98 @@ ul {
 }
 
 /* Vegetation */
+
+.ai-pipeline-subsection {
+  margin-top: var(--section-space);
+  padding-top: clamp(32px, 4vw, 56px);
+  border-top: 1px solid var(--color-line-strong);
+}
+
+.pipeline-flow-board {
+  padding: clamp(24px, 2.8vw, 38px);
+  border: 1px solid var(--color-line-strong);
+  background: #161616;
+}
+
+.pipeline-flow-board__steps {
+  --pipeline-column-gap: clamp(20px, 2.2vw, 36px);
+  display: grid;
+  grid-template-columns: repeat(
+    var(--pipeline-step-count),
+    minmax(0, 1fr)
+  );
+  gap: var(--pipeline-column-gap);
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pipeline-flow-board__steps li {
+  position: relative;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.pipeline-flow-board__number-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.pipeline-flow-board__number {
+  display: block;
+  flex: 0 0 auto;
+  color: var(--color-accent);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+}
+
+.pipeline-flow-board__connector {
+  height: 1px;
+  margin-right: calc(-1 * var(--pipeline-column-gap) + 8px);
+  margin-left: 12px;
+  flex: 1 1 auto;
+  background: color-mix(in srgb, var(--color-accent) 52%, var(--color-line));
+}
+
+.pipeline-flow-board__copy {
+  display: block;
+  margin-top: 13px;
+}
+
+.pipeline-flow-board__copy strong,
+.pipeline-flow-board__copy small {
+  display: block;
+}
+
+.pipeline-flow-board__copy strong {
+  color: var(--color-text);
+  font-size: clamp(0.84rem, 0.78vw, 0.98rem);
+  font-weight: 540;
+  line-height: 1.5;
+}
+
+.pipeline-flow-board__copy small {
+  margin-top: 6px;
+  color: var(--color-text-faint);
+  font-size: 0.61rem;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+}
+
+.pipeline-flow-board > p {
+  max-width: 900px;
+  margin-top: clamp(24px, 2.4vw, 34px);
+  padding-top: 20px;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.78;
+}
 
 .vegetation-section > .subsection + .subsection {
   padding-top: var(--space-8);
@@ -959,6 +1106,45 @@ ul {
   color: #464641;
 }
 
+.contact-ai-capability {
+  margin-top: clamp(32px, 4vw, 56px);
+  padding-top: clamp(24px, 3vw, 36px);
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+}
+
+.contact-ai-capability .eyebrow {
+  margin-bottom: 10px;
+}
+
+.contact-ai-capability h4 {
+  margin-bottom: 14px;
+  color: #171717;
+  font-size: clamp(1.15rem, 1.7vw, 1.45rem);
+  font-weight: 560;
+  line-height: 1.35;
+}
+
+.contact-ai-capability > p:not(.eyebrow) {
+  max-width: 760px;
+  color: #464641;
+  line-height: 1.85;
+}
+
+.contact-ai-capability ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.contact-ai-capability li {
+  padding: 7px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  color: #5c594f;
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+}
+
 .contact-panel {
   padding: clamp(28px, 4vw, 56px);
   border-top: 1px solid #8a652b;
@@ -1070,10 +1256,41 @@ ul {
   gap: 12px;
 }
 
+.lightbox__viewport {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  place-items: center;
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+}
+
+.lightbox__viewport--zoomed {
+  cursor: grab;
+}
+
+.lightbox__viewport--dragging {
+  cursor: grabbing;
+}
+
+.lightbox__image-transform {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  transform-origin: center;
+  will-change: transform;
+}
+
 .lightbox__figure img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
 
 .lightbox__figure figcaption {
@@ -1083,18 +1300,49 @@ ul {
   font-size: var(--text-sm);
 }
 
-.lightbox__close {
+.lightbox__controls {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   top: 18px;
   right: 24px;
-  padding: 10px;
+  display: flex;
+  min-height: 42px;
+  padding: 4px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 15, 15, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.lightbox__controls button,
+.lightbox__controls output {
+  display: grid;
+  min-width: 40px;
+  min-height: 34px;
+  padding: 0 10px;
+  place-items: center;
   color: var(--color-text);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.lightbox__controls button {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
   cursor: pointer;
 }
 
+.lightbox__controls button:first-child {
+  border-left: 0;
+}
+
+.lightbox__controls button:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
 .lightbox__nav {
+  z-index: 2;
   width: 48px;
   height: 48px;
   color: var(--color-text);
