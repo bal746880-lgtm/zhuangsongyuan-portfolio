@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-01T11:40:12.792Z",
+  "generatedAt": "2026-08-01T14:40:16.061Z",
   "chapters": {
     "主视觉封面": {
       "name": "主视觉封面",
@@ -457,34 +457,41 @@
         {
           "name": "无人机2-poster.webp",
           "relativePath": "无人机2-poster.webp",
-          "url": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
-          "src": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
+          "url": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
+          "src": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
           "extension": ".webp",
           "kind": "image",
           "sortValue": null,
           "naturalOrder": null,
           "sizeBytes": 188654,
+          "width": 1600,
+          "height": 900,
+          "aspectRatio": 1.7777777777777777,
           "alt": "无人机2-poster",
-          "srcSet": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011 undefinedw",
+          "srcSet": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011 1600w",
           "sizes": "100vw",
-          "losslessPath": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp",
-          "q92Path": null,
+          "losslessPath": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp",
+          "q92Path": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp",
           "displayVariants": [
             {
-              "src": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
-              "path": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp",
+              "src": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
+              "path": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp",
+              "width": 1600,
+              "height": 900,
               "fileSize": 188654,
               "quality": null,
               "format": "webp"
             }
           ],
-          "lightboxSrc": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
+          "lightboxSrc": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp?v=c83d126dd011",
+          "lightboxWidth": 1600,
+          "lightboxHeight": 900,
           "quality": null,
           "fileSize": 188654,
           "isDisplayed": true,
           "originalPath": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp",
-          "optimizedPath": null,
-          "optimizedFormat": null,
+          "optimizedPath": "/portfolio-optimized-q92/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2-poster.webp",
+          "optimizedFormat": "webp",
           "originalSizeBytes": 188654
         },
         {

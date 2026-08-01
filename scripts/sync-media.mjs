@@ -30,6 +30,12 @@ const legacyProjectName = ["西", "佛", "寺"].join("");
 const currentProjectName = "西福寺";
 const activeDroneVideoName = "无人机2.mp4";
 const activeDronePosterName = "无人机2-poster.webp";
+const optimizedDronePosterPath = path.join(
+  publicRoot,
+  "portfolio-optimized-q92",
+  "无人机",
+  activeDronePosterName,
+);
 
 const chapterFolders = [
   "主视觉封面",
@@ -227,7 +233,6 @@ async function preserveExistingOptimizedManifest() {
     mediaPaths.some(
       (relativePath) =>
         relativePath.startsWith("portfolio/") &&
-        relativePath !== `portfolio/无人机/${activeDronePosterName}` &&
         imageExtensions.has(path.posix.extname(relativePath).toLowerCase()),
     )
   ) {
@@ -600,8 +605,11 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     let sourceStats;
 
     if (isLocalDronePoster) {
-      sourceStats = await stat(sourcePath);
-    } else if (isActiveDroneVideo) {
+      sourceStats = await copyIfChanged(
+        sourcePath,
+        optimizedDronePosterPath,
+        kind,
+      );    } else if (isActiveDroneVideo) {
       try {
         const existingStats = await stat(destination);
         sourceStats = existingStats.isFile()
@@ -623,7 +631,18 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     );
     const losslessSelected =
       kind === "image"
-        ? await selectImageAsset(destination, originalProjectPath)
+        ? isLocalDronePoster
+          ? {
+              ...(await toVersionedUrl(optimizedDronePosterPath)),
+              width: 1600,
+              height: 900,
+              aspectRatio: 16 / 9,
+              optimizedPath: toPublicUrl(
+                path.relative(publicRoot, optimizedDronePosterPath),
+              ),
+              optimizedFormat: "webp",
+            }
+          : await selectImageAsset(destination, originalProjectPath)
         : await toVersionedUrl(destination);
     const responsiveSelected =
       kind === "image"
@@ -662,7 +681,9 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
             sizes: responsiveSelected?.sizes ?? "100vw",
             losslessPath:
               responsiveSelected?.losslessPath ?? losslessSelected.path,
-            q92Path: responsiveSelected?.q92Path ?? null,
+            q92Path:
+              responsiveSelected?.q92Path ??
+              (isLocalDronePoster ? losslessSelected.path : null),
             displayVariants,
             lightboxSrc: lightboxVariant?.src ?? selected.src,
             lightboxWidth:
