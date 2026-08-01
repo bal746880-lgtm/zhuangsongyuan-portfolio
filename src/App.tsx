@@ -15,6 +15,7 @@ import { VegetationSection } from "./components/sections/VegetationSection";
 import { WalkthroughSection } from "./components/sections/WalkthroughSection";
 import { chapterFolderNames, getChapter } from "./data/media";
 import { usePortfolioManifest } from "./hooks/usePortfolioManifest";
+import { useMediaProtection } from "./hooks/useMediaProtection";
 import { useRevealOnScroll } from "./hooks/useRevealOnScroll";
 import { PortfolioPdfView } from "./print/PortfolioPdfView";
 
@@ -41,6 +42,7 @@ function ErrorState({ message }: { message: string }) {
 
 export default function App() {
   const { manifest, error } = usePortfolioManifest();
+  useMediaProtection();
   const isPdfMode =
     new URLSearchParams(window.location.search).get("portfolioPdf") === "1";
   useRevealOnScroll(Boolean(manifest && !error && !isPdfMode));

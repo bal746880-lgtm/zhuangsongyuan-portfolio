@@ -3,7 +3,6 @@ import { galleryLayouts } from "../../data/galleryLayouts";
 import { pcgLabels, sectionCopy } from "../../data/portfolio";
 import { imagesIn } from "../../utils/mediaHelpers";
 import { ConfiguredMediaGroup } from "../media/ConfiguredMediaGroup";
-import { PlaceholderPanel } from "../ui/PlaceholderPanel";
 import { SectionHeader } from "../ui/SectionHeader";
 
 export function PcgSection({ media }: { media?: MediaFolder }) {
@@ -11,9 +10,10 @@ export function PcgSection({ media }: { media?: MediaFolder }) {
   const processImages = images.filter(
     (image) => image.sortValue !== null && image.sortValue <= 6,
   );
-  const resultImages = images.filter(
-    (image) => image.sortValue !== null && image.sortValue > 6,
-  );
+  const assetFolder = media?.children.find((folder) => folder.sortValue === 7);
+  const resultFolder = media?.children.find((folder) => folder.sortValue === 8);
+  const assetImages = imagesIn(assetFolder);
+  const resultImages = imagesIn(resultFolder);
 
   return (
     <section className="content-section pcg-section" id="pcg">
@@ -49,11 +49,36 @@ export function PcgSection({ media }: { media?: MediaFolder }) {
         </div>
       ) : null}
 
+      {assetImages.length ? (
+        <div className="subsection">
+          <div className="subsection-heading">
+            <p className="eyebrow">MOSS ASSET PRODUCTION</p>
+            <h3>苔藓资产制作流程</h3>
+            <p>
+              以游戏参考约束苔藓的形态方向，通过AI生成基础模型，再经Marmoset
+              Toolbag高低模烘焙与UE5材质制作，形成可用于岩石表面散布的苔藓资产。
+            </p>
+          </div>
+          <ConfiguredMediaGroup
+            files={assetImages}
+            config={galleryLayouts.pcgProcess}
+            sectionId="pcg-asset-production-gallery"
+            title=""
+            caption=""
+            altPrefix="苔藓资产制作流程："
+            itemCaption="苔藓资产制作过程。"
+          />
+        </div>
+      ) : null}
+
       {resultImages.length ? (
         <div className="subsection">
           <div className="subsection-heading">
-            <p className="eyebrow">FINAL RESULT</p>
-            <h3>苔藓生成与场景应用</h3>
+            <p className="eyebrow">FINAL PCG SCENE APPLICATION</p>
+            <h3>岩石苔藓PCG最终场景应用</h3>
+            <p>
+              展示苔藓资产与岩石PCG系统在不同区域、坡度和光照条件下的最终落地效果，验证程序化散布与人工调整结合后的场景表现。
+            </p>
           </div>
           <ConfiguredMediaGroup
             files={resultImages}
@@ -62,12 +87,10 @@ export function PcgSection({ media }: { media?: MediaFolder }) {
             title=""
             caption=""
             altPrefix="岩石苔藓 PCG 最终效果："
-            itemCaption="PCG生成结果与场景应用效果。"
+            itemCaption="岩石苔藓PCG最终场景应用。"
           />
         </div>
-      ) : (
-        <PlaceholderPanel label="最终效果待补充" detail="当前未读取到 PCG 最终场景图片。" />
-      )}
+      ) : null}
     </section>
   );
 }

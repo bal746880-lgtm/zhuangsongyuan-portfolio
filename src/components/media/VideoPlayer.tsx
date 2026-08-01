@@ -46,6 +46,8 @@ export function VideoPlayer({
             ref={videoRef}
             src={video.src ?? video.url}
             controls
+            controlsList="nodownload noremoteplayback"
+            disablePictureInPicture
             playsInline
             preload="none"
             aria-label={title}

@@ -29,6 +29,7 @@ const q92ReportPath = path.join(
 const legacyProjectName = ["西", "佛", "寺"].join("");
 const currentProjectName = "西福寺";
 const activeDroneVideoName = "无人机2.mp4";
+const activeDronePosterName = "无人机2-poster.webp";
 
 const chapterFolders = [
   "主视觉封面",
@@ -414,6 +415,29 @@ async function copyIfChanged(source, destination, kind) {
 
 async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
   const entries = await readdir(sourceFolder, { withFileTypes: true });
+  const isDroneChapterRoot =
+    sourceFolder === chapterRoot && path.basename(chapterRoot) === "无人机";
+
+  if (
+    isDroneChapterRoot &&
+    !entries.some((entry) => entry.name === activeDronePosterName)
+  ) {
+    try {
+      const localPosterStats = await stat(
+        path.join(destinationChapter, activeDronePosterName),
+      );
+      if (localPosterStats.isFile()) {
+        entries.push({
+          name: activeDronePosterName,
+          isDirectory: () => false,
+          isFile: () => true,
+        });
+      }
+    } catch {
+      // The poster is optional until it has been generated locally.
+    }
+  }
+
   const folder = {
     name: path.basename(sourceFolder),
     relativePath: path.relative(chapterRoot, sourceFolder),
@@ -424,8 +448,14 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
   };
 
   for (const entry of entries) {
-    const sourcePath = path.join(sourceFolder, entry.name);
-    const relativeToChapter = path.relative(chapterRoot, sourcePath);
+    const isLocalDronePoster =
+      isDroneChapterRoot && entry.name === activeDronePosterName;
+    const sourcePath = isLocalDronePoster
+      ? path.join(destinationChapter, entry.name)
+      : path.join(sourceFolder, entry.name);
+    const relativeToChapter = isLocalDronePoster
+      ? entry.name
+      : path.relative(chapterRoot, sourcePath);
 
     if (entry.isDirectory()) {
       folder.children.push(
@@ -448,7 +478,27 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     }
 
     const destination = path.join(destinationChapter, relativeToChapter);
-    const sourceStats = await copyIfChanged(sourcePath, destination, kind);
+    const isActiveDroneVideo =
+      kind === "video" &&
+      isDroneChapterRoot &&
+      entry.name === activeDroneVideoName;
+    let sourceStats;
+
+    if (isLocalDronePoster) {
+      sourceStats = await stat(sourcePath);
+    } else if (isActiveDroneVideo) {
+      try {
+        const existingStats = await stat(destination);
+        sourceStats = existingStats.isFile()
+          ? existingStats
+          : await copyIfChanged(sourcePath, destination, kind);
+      } catch {
+        sourceStats = await copyIfChanged(sourcePath, destination, kind);
+      }
+    } else {
+      sourceStats = await copyIfChanged(sourcePath, destination, kind);
+    }
+
     const publicRelative = path.join(path.basename(chapterRoot), relativeToChapter);
     const originalProjectPath = toPosixPath(
       path.join("public", "portfolio", publicRelative),

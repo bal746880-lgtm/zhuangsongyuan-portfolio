@@ -1,11 +1,12 @@
 import type { MediaFolder } from "../../data/media";
-import { videosIn } from "../../utils/mediaHelpers";
-import { VideoPlayer } from "../media/VideoPlayer";
+import { imagesIn, videosIn } from "../../utils/mediaHelpers";
+import { DroneVideoPlayer } from "../media/DroneVideoPlayer";
 import { PlaceholderPanel } from "../ui/PlaceholderPanel";
 import { SectionHeader } from "../ui/SectionHeader";
 
 export function DroneSection({ media }: { media?: MediaFolder }) {
   const [video] = videosIn(media);
+  const [poster] = imagesIn(media);
 
   return (
     <section className="content-section" id="drone">
@@ -22,8 +23,9 @@ export function DroneSection({ media }: { media?: MediaFolder }) {
       />
       {video ? (
         <div className="video-stack">
-          <VideoPlayer
+          <DroneVideoPlayer
             video={video}
+            poster={poster?.src ?? poster?.url}
             title="无人机全景"
             description="通过连续高空镜头观察寺庙空间、建筑关系与整体环境层次。"
           />

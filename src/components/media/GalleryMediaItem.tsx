@@ -95,6 +95,9 @@ export function GalleryMediaItem({
           src={item.src}
           poster={item.poster}
           controls
+          controlsList="nodownload noremoteplayback"
+          disablePictureInPicture
+          playsInline
           preload="metadata"
           onLoadedMetadata={onMediaLoad}
         />

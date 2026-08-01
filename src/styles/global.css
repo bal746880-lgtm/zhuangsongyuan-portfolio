@@ -1028,6 +1028,11 @@ ul {
 
 /* PCG */
 
+:is(img, picture, video, canvas) {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 .pcg-labels {
   display: flex;
   flex-wrap: wrap;
