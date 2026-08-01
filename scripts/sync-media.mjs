@@ -1,4 +1,4 @@
-import {
+﻿import {
   copyFile,
   mkdir,
   readFile,
@@ -152,6 +152,41 @@ async function loadQ92Report() {
 
 const q92Entries = await loadQ92Report();
 
+const committedPcgResponsiveEntries = await (async () => {
+  try {
+    const manifest = JSON.parse(
+      await readFile(path.join(outputRoot, "manifest.json"), "utf8"),
+    );
+    const entries = new Map();
+    const visit = (folder) => {
+      for (const file of folder.files ?? []) {
+        if (
+          typeof file.originalPath !== "string" ||
+          !file.originalPath.includes(
+            "/portfolio/%E5%B2%A9%E7%9F%B3%E8%8B%94%E8%97%93PCG%E7%B3%BB%E7%BB%9F/",
+          ) ||
+          ![
+            "7%E8%8B%94%E8%97%93%E5%88%B6%E4%BD%9C%E6%96%B9%E5%BC%8F",
+            "8%E6%9C%80%E7%BB%88%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA",
+          ].some((segment) => file.originalPath.includes(`/${segment}/`))
+        ) {
+          continue;
+        }
+        const decodedPath = decodeURIComponent(
+          file.originalPath.split("?")[0],
+        ).replace(/^\//, "");
+        entries.set(`public/${decodedPath}`, file);
+      }
+      for (const child of folder.children ?? []) visit(child);
+    };
+    const chapter = manifest.chapters?.["岩石苔藓PCG系统"];
+    if (chapter) visit(chapter);
+    return entries;
+  } catch {
+    return new Map();
+  }
+})();
+
 async function preserveExistingOptimizedManifest() {
   const manifestPath = path.join(outputRoot, "manifest.json");
   let manifest;
@@ -192,6 +227,7 @@ async function preserveExistingOptimizedManifest() {
     mediaPaths.some(
       (relativePath) =>
         relativePath.startsWith("portfolio/") &&
+        relativePath !== `portfolio/无人机/${activeDronePosterName}` &&
         imageExtensions.has(path.posix.extname(relativePath).toLowerCase()),
     )
   ) {
@@ -303,7 +339,86 @@ async function versionResponsiveVariant(variant) {
 
 async function selectResponsiveAsset(originalProjectPath) {
   const reportEntry = q92Entries.get(originalProjectPath);
-  if (!reportEntry) return null;
+  if (!reportEntry) {
+    const committedEntry = committedPcgResponsiveEntries.get(
+      originalProjectPath,
+    );
+    if (!committedEntry) return null;
+
+    try {
+      const versionCommittedVariant = async (variant) => {
+        if (
+          typeof variant?.path !== "string" ||
+          !variant.path.startsWith("/portfolio-optimized-q92/") ||
+          !Number.isFinite(variant.width) ||
+          !Number.isFinite(variant.height)
+        ) {
+          throw new Error("invalid committed responsive variant");
+        }
+        const decodedPath = decodeURIComponent(variant.path).replace(/^\//, "");
+        const versioned = await toVersionedUrl(
+          path.join(publicRoot, ...decodedPath.split("/")),
+        );
+        if (
+          Number.isFinite(variant.fileSize) &&
+          versioned.stats.size !== variant.fileSize
+        ) {
+          throw new Error(`Responsive variant size changed: ${variant.path}`);
+        }
+        return {
+          ...variant,
+          src: versioned.src,
+          path: versioned.path,
+          fileSize: versioned.stats.size,
+        };
+      };
+
+      const displayVariants = [];
+      for (const variant of committedEntry.displayVariants ?? []) {
+        displayVariants.push(await versionCommittedVariant(variant));
+      }
+      if (displayVariants.length === 0) return null;
+
+      const defaultPath = committedEntry.src?.split("?")[0];
+      const defaultVariant =
+        displayVariants.find((variant) => variant.path === defaultPath) ??
+        displayVariants[0];
+      const lightboxPath = committedEntry.lightboxSrc?.split("?")[0];
+      const lightboxVariant =
+        displayVariants.find((variant) => variant.path === lightboxPath) ??
+        await versionCommittedVariant({
+          path: lightboxPath,
+          width: committedEntry.lightboxWidth,
+          height: committedEntry.lightboxHeight,
+          fileSize: null,
+          quality: committedEntry.quality,
+          format: "webp",
+        });
+
+      return {
+        defaultVariant,
+        displayVariants,
+        width: committedEntry.width,
+        height: committedEntry.height,
+        aspectRatio: committedEntry.aspectRatio,
+        srcSet: displayVariants
+          .map((variant) => `${variant.src} ${variant.width}w`)
+          .join(", "),
+        sizes: committedEntry.sizes,
+        lightboxVariant,
+        losslessPath: committedEntry.losslessPath,
+        q92Path: defaultVariant.path,
+        imageCategory: committedEntry.imageCategory,
+        sectionId: committedEntry.sectionId,
+        quality: committedEntry.quality,
+      };
+    } catch (error) {
+      console.warn(
+        `Committed PCG responsive variants unavailable for ${originalProjectPath}: ${error.message}`,
+      );
+      return null;
+    }
+  }
 
   try {
     const allVariants = [];
