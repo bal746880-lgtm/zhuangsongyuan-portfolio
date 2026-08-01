@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-01T14:40:16.061Z",
+  "generatedAt": "2026-08-01T15:56:51.164Z",
   "chapters": {
     "主视觉封面": {
       "name": "主视觉封面",
@@ -497,18 +497,18 @@
         {
           "name": "无人机2.mp4",
           "relativePath": "无人机2.mp4",
-          "url": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4?v=f80662e270a9",
-          "src": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4?v=f80662e270a9",
+          "url": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4?v=c58cde6bd4f1",
+          "src": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4?v=c58cde6bd4f1",
           "extension": ".mp4",
           "kind": "video",
           "sortValue": null,
           "naturalOrder": null,
-          "sizeBytes": 68557735,
+          "sizeBytes": 43744959,
           "isDisplayed": true,
           "originalPath": "/portfolio/%E6%97%A0%E4%BA%BA%E6%9C%BA/%E6%97%A0%E4%BA%BA%E6%9C%BA2.mp4",
           "optimizedPath": null,
           "optimizedFormat": null,
-          "originalSizeBytes": 68557735
+          "originalSizeBytes": 43744959
         }
       ],
       "children": []

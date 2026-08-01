@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef } from "react";
+﻿import { useCallback, useEffect, useId, useRef } from "react";
 import type { MediaFile } from "../../data/media";
 import { formatBytes } from "../../utils/mediaHelpers";
 
@@ -16,6 +16,18 @@ interface NavigatorWithConnection extends Navigator {
 }
 
 const VIDEO_PLAY_EVENT = "xifo-video-play";
+const INITIAL_BUFFER_SECONDS = 6;
+
+function getBufferedAhead(element: HTMLVideoElement) {
+  for (let index = 0; index < element.buffered.length; index += 1) {
+    const start = element.buffered.start(index);
+    const end = element.buffered.end(index);
+    if (element.currentTime >= start && element.currentTime <= end) {
+      return Math.max(0, end - element.currentTime);
+    }
+  }
+  return 0;
+}
 
 export function DroneVideoPlayer({
   video,
@@ -28,6 +40,9 @@ export function DroneVideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasAttachedSourceRef = useRef(false);
   const hasCalledLoadRef = useRef(false);
+  const hasStartedPlaybackRef = useRef(false);
+  const isWaitingForBufferRef = useRef(false);
+  const removeBufferListenersRef = useRef<(() => void) | null>(null);
   const videoSource = video.src ?? video.url;
 
   const attachSource = useCallback(
@@ -52,14 +67,69 @@ export function DroneVideoPlayer({
     [videoSource],
   );
 
+  const clearBufferWait = useCallback(() => {
+    removeBufferListenersRef.current?.();
+    removeBufferListenersRef.current = null;
+    isWaitingForBufferRef.current = false;
+  }, []);
+
+  const waitForInitialBuffer = useCallback(
+    (element: HTMLVideoElement) => {
+      if (hasStartedPlaybackRef.current) return false;
+      if (
+        getBufferedAhead(element) >= INITIAL_BUFFER_SECONDS ||
+        element.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA
+      ) {
+        hasStartedPlaybackRef.current = true;
+        return false;
+      }
+
+      element.pause();
+      if (isWaitingForBufferRef.current) return true;
+      isWaitingForBufferRef.current = true;
+
+      const resumeWhenReady = () => {
+        if (
+          getBufferedAhead(element) < INITIAL_BUFFER_SECONDS &&
+          element.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA
+        ) {
+          return;
+        }
+
+        clearBufferWait();
+        hasStartedPlaybackRef.current = true;
+        void element.play().catch(() => {
+          hasStartedPlaybackRef.current = false;
+        });
+      };
+
+      element.addEventListener("progress", resumeWhenReady);
+      element.addEventListener("canplay", resumeWhenReady);
+      element.addEventListener("canplaythrough", resumeWhenReady);
+      removeBufferListenersRef.current = () => {
+        element.removeEventListener("progress", resumeWhenReady);
+        element.removeEventListener("canplay", resumeWhenReady);
+        element.removeEventListener("canplaythrough", resumeWhenReady);
+      };
+      resumeWhenReady();
+      return true;
+    },
+    [clearBufferWait],
+  );
+
   useEffect(() => {
     const pauseOtherVideo = (event: Event) => {
       const playingId = (event as CustomEvent<string>).detail;
-      if (playingId !== id) videoRef.current?.pause();
+      if (playingId !== id) {
+        clearBufferWait();
+        videoRef.current?.pause();
+      }
     };
     window.addEventListener(VIDEO_PLAY_EVENT, pauseOtherVideo);
     return () => window.removeEventListener(VIDEO_PLAY_EVENT, pauseOtherVideo);
-  }, [id]);
+  }, [clearBufferWait, id]);
+
+  useEffect(() => clearBufferWait, [clearBufferWait]);
 
   useEffect(() => {
     const saveData = (navigator as NavigatorWithConnection).connection?.saveData;
@@ -69,10 +139,10 @@ export function DroneVideoPlayer({
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
-        attachSource("metadata");
+        attachSource("auto");
         observer.disconnect();
       },
-      { rootMargin: "1000px 0px" },
+      { rootMargin: "2000px 0px" },
     );
 
     observer.observe(target);
@@ -99,6 +169,8 @@ export function DroneVideoPlayer({
           }}
           onPlay={() => {
             attachSource("auto");
+            const element = videoRef.current;
+            if (element && waitForInitialBuffer(element)) return;
             window.dispatchEvent(
               new CustomEvent<string>(VIDEO_PLAY_EVENT, { detail: id }),
             );
