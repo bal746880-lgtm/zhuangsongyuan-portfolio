@@ -1,4 +1,4 @@
-﻿import {
+import {
   copyFile,
   mkdir,
   readFile,
@@ -28,14 +28,29 @@ const q92ReportPath = path.join(
 );
 const legacyProjectName = ["西", "佛", "寺"].join("");
 const currentProjectName = "西福寺";
-const activeDroneVideoName = "无人机2.mp4";
-const activeDronePosterName = "无人机2-poster.webp";
-const optimizedDronePosterPath = path.join(
-  publicRoot,
-  "portfolio-optimized-q92",
-  "无人机",
-  activeDronePosterName,
-);
+
+const vegetationChapterName = "植被全流程与Billboard制作";
+const vegetationCanonicalFolderNames = new Set([
+  "00_生态系统展示",
+  "01_参考与形态分析",
+  "02_AI多视图方案生成",
+  "03_AI基础模型生成",
+  "04_ZBrush人工树干雕刻",
+  "05_RizomUV重构",
+  "06_高低模烘焙",
+  "07_SubstancePainter树干贴图制作",
+  "08_提取真实枝干形态",
+  "09_AI生成枝叶参考",
+  "10_SpeedTree制作枝叶及材质测试",
+  "11_法线迭代",
+  "12_2比1植被纹理图集规划",
+  "13_DCC枝叶插片制作与SpeedTree效果验证",
+  "14_SpeedTree整体植被制作",
+  "15_IGTools风动制作",
+  "16_球形法线烘焙与Shader法线混合",
+  "17_Billboard与远景表现",
+  "18_最终效果展示",
+]);
 
 const chapterFolders = [
   "主视觉封面",
@@ -193,6 +208,42 @@ const committedPcgResponsiveEntries = await (async () => {
   }
 })();
 
+const committedVegetationResponsiveEntries = await (async () => {
+  try {
+    const manifest = JSON.parse(
+      await readFile(path.join(outputRoot, "manifest.json"), "utf8"),
+    );
+    const entries = new Map();
+    const visit = (folder) => {
+      for (const file of folder.files ?? []) {
+        if (typeof file.originalPath !== "string") continue;
+        const decodedOriginalPath = decodeURIComponent(
+          file.originalPath.split("?")[0],
+        ).replace(/^\//, "");
+        const decodedSelectedPath = decodeURIComponent(
+          (file.src ?? file.url ?? "").split("?")[0],
+        ).replace(/^\//, "");
+        if (
+          !decodedOriginalPath.startsWith(
+            `portfolio/${vegetationChapterName}/`,
+          ) ||
+          !decodedSelectedPath.startsWith(
+            `portfolio-optimized-q92/${vegetationChapterName}/`,
+          )
+        ) {
+          continue;
+        }
+        entries.set(`public/${decodedOriginalPath}`, file);
+      }
+      for (const child of folder.children ?? []) visit(child);
+    };
+    const chapter = manifest.chapters?.[vegetationChapterName];
+    if (chapter) visit(chapter);
+    return entries;
+  } catch {
+    return new Map();
+  }
+})();
 async function preserveExistingOptimizedManifest() {
   const manifestPath = path.join(outputRoot, "manifest.json");
   let manifest;
@@ -345,9 +396,9 @@ async function versionResponsiveVariant(variant) {
 async function selectResponsiveAsset(originalProjectPath) {
   const reportEntry = q92Entries.get(originalProjectPath);
   if (!reportEntry) {
-    const committedEntry = committedPcgResponsiveEntries.get(
-      originalProjectPath,
-    );
+    const committedEntry =
+      committedPcgResponsiveEntries.get(originalProjectPath) ??
+      committedVegetationResponsiveEntries.get(originalProjectPath);
     if (!committedEntry) return null;
 
     try {
@@ -537,26 +588,9 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
   const entries = await readdir(sourceFolder, { withFileTypes: true });
   const isDroneChapterRoot =
     sourceFolder === chapterRoot && path.basename(chapterRoot) === "无人机";
-
-  if (
-    isDroneChapterRoot &&
-    !entries.some((entry) => entry.name === activeDronePosterName)
-  ) {
-    try {
-      const localPosterStats = await stat(
-        path.join(destinationChapter, activeDronePosterName),
-      );
-      if (localPosterStats.isFile()) {
-        entries.push({
-          name: activeDronePosterName,
-          isDirectory: () => false,
-          isFile: () => true,
-        });
-      }
-    } catch {
-      // The poster is optional until it has been generated locally.
-    }
-  }
+  const isVegetationChapterRoot =
+    sourceFolder === chapterRoot &&
+    path.basename(chapterRoot) === vegetationChapterName;
 
   const folder = {
     name: path.basename(sourceFolder),
@@ -568,14 +602,14 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
   };
 
   for (const entry of entries) {
-    const isLocalDronePoster =
-      isDroneChapterRoot && entry.name === activeDronePosterName;
-    const sourcePath = isLocalDronePoster
-      ? path.join(destinationChapter, entry.name)
-      : path.join(sourceFolder, entry.name);
-    const relativeToChapter = isLocalDronePoster
-      ? entry.name
-      : path.relative(chapterRoot, sourcePath);
+    if (
+      isVegetationChapterRoot &&
+      (!entry.isDirectory() || !vegetationCanonicalFolderNames.has(entry.name))
+    ) {
+      continue;
+    }
+    const sourcePath = path.join(sourceFolder, entry.name);
+    const relativeToChapter = path.relative(chapterRoot, sourcePath);
 
     if (entry.isDirectory()) {
       folder.children.push(
@@ -589,38 +623,10 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     const extension = path.extname(entry.name).toLowerCase();
     const kind = getKind(extension);
     if (kind === "other") continue;
-    if (
-      kind === "video" &&
-      path.basename(chapterRoot) === "无人机" &&
-      entry.name !== activeDroneVideoName
-    ) {
-      continue;
-    }
+    if (isDroneChapterRoot && (kind === "image" || kind === "video")) continue;
 
     const destination = path.join(destinationChapter, relativeToChapter);
-    const isActiveDroneVideo =
-      kind === "video" &&
-      isDroneChapterRoot &&
-      entry.name === activeDroneVideoName;
-    let sourceStats;
-
-    if (isLocalDronePoster) {
-      sourceStats = await copyIfChanged(
-        sourcePath,
-        optimizedDronePosterPath,
-        kind,
-      );    } else if (isActiveDroneVideo) {
-      try {
-        const existingStats = await stat(destination);
-        sourceStats = existingStats.isFile()
-          ? existingStats
-          : await copyIfChanged(sourcePath, destination, kind);
-      } catch {
-        sourceStats = await copyIfChanged(sourcePath, destination, kind);
-      }
-    } else {
-      sourceStats = await copyIfChanged(sourcePath, destination, kind);
-    }
+    const sourceStats = await copyIfChanged(sourcePath, destination, kind);
 
     const publicRelative = path.join(path.basename(chapterRoot), relativeToChapter);
     const originalProjectPath = toPosixPath(
@@ -631,18 +637,7 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
     );
     const losslessSelected =
       kind === "image"
-        ? isLocalDronePoster
-          ? {
-              ...(await toVersionedUrl(optimizedDronePosterPath)),
-              width: 1600,
-              height: 900,
-              aspectRatio: 16 / 9,
-              optimizedPath: toPublicUrl(
-                path.relative(publicRoot, optimizedDronePosterPath),
-              ),
-              optimizedFormat: "webp",
-            }
-          : await selectImageAsset(destination, originalProjectPath)
+        ? await selectImageAsset(destination, originalProjectPath)
         : await toVersionedUrl(destination);
     const responsiveSelected =
       kind === "image"
@@ -681,9 +676,7 @@ async function scanFolder(sourceFolder, chapterRoot, destinationChapter) {
             sizes: responsiveSelected?.sizes ?? "100vw",
             losslessPath:
               responsiveSelected?.losslessPath ?? losslessSelected.path,
-            q92Path:
-              responsiveSelected?.q92Path ??
-              (isLocalDronePoster ? losslessSelected.path : null),
+            q92Path: responsiveSelected?.q92Path ?? null,
             displayVariants,
             lightboxSrc: lightboxVariant?.src ?? selected.src,
             lightboxWidth:
@@ -737,8 +730,11 @@ const manifest = {
 };
 
 for (const chapter of chapterFolders) {
-  const sourceChapter = path.join(desktopRoot, chapter);
   const destinationChapter = path.join(outputRoot, chapter);
+  const sourceChapter =
+    chapter === vegetationChapterName
+      ? destinationChapter
+      : path.join(desktopRoot, chapter);
 
   try {
     const chapterStats = await stat(sourceChapter);

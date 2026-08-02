@@ -9,13 +9,13 @@ export const navItems = [
   { id: "hero", label: "首页" },
   { id: "about", label: "关于我" },
   { id: "stills", label: "作品展示" },
+  { id: "drone", label: "视频" },
   { id: "overview", label: "项目概览" },
   { id: "layout", label: "规划" },
   { id: "modular", label: "模块" },
   { id: "materials", label: "材质" },
   { id: "vegetation", label: "植被" },
   { id: "pcg", label: "PCG" },
-  { id: "walkthrough", label: "跑图" },
   { id: "contact", label: "联系" },
 ] as const;
 

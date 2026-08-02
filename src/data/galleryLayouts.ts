@@ -53,7 +53,11 @@ export const galleryLayouts = {
     layoutVariant: "technical",
     maxMediaHeight: "clamp(540px, 72vh, 860px)",
   },
-  vegetationSceneGallery: {
+  vegetationEcosystem: {
+    layoutMode: "horizontal",
+    layoutVariant: "cinematic",
+    maxMediaHeight: "clamp(520px, 68vh, 820px)",
+  },  vegetationSceneGallery: {
     layoutMode: "horizontal",
     layoutVariant: "cinematic",
     maxMediaHeight: "clamp(520px, 68vh, 820px)",
@@ -84,45 +88,23 @@ export const galleryLayouts = {
     maxMediaHeight: "clamp(540px, 72vh, 860px)",
   },
   vegetationSteps: {
-    1: {
-      layoutMode: "equal-row",
-      layoutVariant: "reference",
-      maxMediaHeight: "clamp(420px, 32vw, 650px)",
-    },
-    2: {
-      layoutMode: "equal-row",
-      layoutVariant: "reference",
-      maxMediaHeight: "clamp(320px, 28vw, 520px)",
-    },
-    3: {
-      layoutMode: "equal-row",
-      layoutVariant: "technical",
-      maxMediaHeight: "clamp(420px, 32vw, 650px)",
-    },
-    4: {
-      layoutMode: "equal-row",
-      layoutVariant: "process",
-      maxMediaHeight: "clamp(320px, 28vw, 520px)",
-    },
-    5: {
-      layoutMode: "horizontal",
-      layoutVariant: "process",
-      maxMediaHeight: "clamp(520px, 68vh, 820px)",
-    },
-    6: {
-      layoutMode: "equal-row",
-      layoutVariant: "technical",
-      maxMediaHeight: "clamp(420px, 32vw, 650px)",
-    },
-    7: {
-      layoutMode: "single",
-      layoutVariant: "technical",
-      maxMediaHeight: "clamp(480px, 62vh, 760px)",
-    },
-    8: {
-      layoutMode: "equal-row",
-      layoutVariant: "process",
-      maxMediaHeight: "clamp(320px, 28vw, 520px)",
-    },
+    1: { layoutMode: "single", layoutVariant: "reference", maxMediaHeight: "clamp(520px, 68vh, 820px)" },
+    2: { layoutMode: "horizontal", layoutVariant: "reference", maxMediaHeight: "clamp(520px, 68vh, 800px)" },
+    3: { layoutMode: "single", layoutVariant: "technical", maxMediaHeight: "clamp(520px, 68vh, 800px)" },
+    4: { layoutMode: "horizontal", layoutVariant: "process", maxMediaHeight: "clamp(520px, 68vh, 820px)" },
+    5: { layoutMode: "single", layoutVariant: "technical", maxMediaHeight: "clamp(520px, 68vh, 800px)" },
+    6: { layoutMode: "single", layoutVariant: "technical", maxMediaHeight: "clamp(520px, 68vh, 800px)" },
+    7: { layoutMode: "single", layoutVariant: "technical", maxMediaHeight: "clamp(520px, 68vh, 800px)" },
+    8: { layoutMode: "equal-row", layoutVariant: "reference", maxMediaHeight: "clamp(420px, 32vw, 650px)" },
+    9: { layoutMode: "horizontal", layoutVariant: "reference", maxMediaHeight: "clamp(520px, 68vh, 800px)" },
+    10: { layoutMode: "equal-row", layoutVariant: "technical", maxMediaHeight: "clamp(420px, 32vw, 650px)" },
+    11: { layoutMode: "equal-row", layoutVariant: "process", maxMediaHeight: "clamp(320px, 28vw, 520px)" },
+    12: { layoutMode: "single", layoutVariant: "technical", maxMediaHeight: "clamp(520px, 68vh, 820px)" },
+    13: { layoutMode: "equal-row", layoutVariant: "technical", maxMediaHeight: "clamp(420px, 32vw, 650px)" },
+    14: { layoutMode: "horizontal", layoutVariant: "process", maxMediaHeight: "clamp(520px, 68vh, 820px)" },
+    15: { layoutMode: "single", layoutVariant: "technical", maxMediaHeight: "clamp(480px, 62vh, 760px)" },
+    16: { layoutMode: "equal-row", layoutVariant: "process", maxMediaHeight: "clamp(420px, 32vw, 650px)" },
+    17: { layoutMode: "single", layoutVariant: "technical", maxMediaHeight: "clamp(520px, 68vh, 820px)" },
+    18: { layoutMode: "horizontal", layoutVariant: "cinematic", maxMediaHeight: "clamp(520px, 68vh, 820px)" },
   },
 } as const satisfies Record<string, unknown>;

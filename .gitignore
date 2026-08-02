@@ -12,3 +12,16 @@ work/
 *.log
 public/portfolio/äººç‰©å®Œæ•´è·‘å›¾/è·‘å›¾æ€»è§ˆ.mp4
 public/portfolio/äººç‰©å®Œæ•´è·‘å›¾/7æœˆ30æ—¥ (2).mp4
+
+# Local walkthrough videos
+public/portfolio/ÈËÎïÍêÕûÅÜÍ¼/*.mp4
+
+# Local walkthrough video files
+public/portfolio/ÈËÎïÍêÕûÅÜÍ¼/*.mp4
+
+# Local walkthrough videos
+public/portfolio/ÈËÎïÍêÕûÅÜÍ¼/*.mp4
+public/portfolio/**/*.mp4
+public/portfolio/**/*.mov
+public/portfolio/**/*.mkv
+public/portfolio/**/*.avi

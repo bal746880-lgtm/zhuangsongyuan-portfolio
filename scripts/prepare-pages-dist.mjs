@@ -29,7 +29,7 @@ const prepareReportPath = path.join(
   outputsRoot,
   "pages-dist-prepare-report.json",
 );
-const expectedDronePath = "portfolio/无人机/无人机2.mp4";
+
 const mediaExtensions = new Set([
   ".png",
   ".jpg",
@@ -245,10 +245,7 @@ async function main() {
     const videoPaths = mediaPaths.filter((relativePath) =>
       videoExtensions.has(path.posix.extname(relativePath).toLowerCase()),
     );
-    const unexpectedVideos = videoPaths.filter(
-      (relativePath) => relativePath !== expectedDronePath,
-    );
-    if (unexpectedVideos.length || !videoPaths.includes(expectedDronePath)) {
+    if (videoPaths.length) {
       throw new Error(
         `Unexpected manifest video selection:\n${videoPaths.join("\n")}`,
       );

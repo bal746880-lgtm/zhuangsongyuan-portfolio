@@ -22,7 +22,7 @@ export function BilibiliPlayer({
         {isActivated ? (
           <iframe
             src={embedUrl}
-            title="西福寺人物完整跑图"
+            title={`西福寺${title}`}
             loading="lazy"
             scrolling="no"
             frameBorder="0"
@@ -33,11 +33,11 @@ export function BilibiliPlayer({
           <button
             className="video-frame__activation bilibili-player__activation"
             type="button"
-            aria-label="播放西福寺人物完整跑图"
+            aria-label={`播放西福寺${title}`}
             onClick={() => setIsActivated(true)}
           >
             <span className="video-frame__play-icon" aria-hidden="true" />
-            <span>播放完整跑图</span>
+            <span>播放完整视频</span>
           </button>
         )}
       </div>

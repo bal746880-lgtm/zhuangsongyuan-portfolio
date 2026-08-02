@@ -4,6 +4,13 @@ export interface PipelineStep {
   english: string;
 }
 
+export interface PipelinePhase {
+  number: number;
+  title: string;
+  english: string;
+  steps: readonly PipelineStep[];
+}
+
 export interface PipelineMediaCopy {
   title: string;
   english: string;
@@ -101,49 +108,53 @@ export const propAiPipeline = {
 export const treeTrunkAiPipeline = {
   folderMatcher: (name: string) =>
     name.includes("树干AI") && name.includes("管线"),
-  eyebrow: "AI-ASSISTED TREE TRUNK PIPELINE",
-  title: "树干AI辅助资产管线落地",
-  subtitle:
-    "从真实树干参考出发，通过AI三视图多轮方案生成与基础网格建立完成前期形态验证，再经ZBrush人工雕刻、RizomUV重构及Marmoset Toolbag高低模烘焙，形成可继续用于Speedtree制作的树干资产。",
-  boardDescription:
-    "通过AI快速建立树干形态和基础网格，再由人工完成造型深化、UV、高低模烘焙及Speedtree适配，使生成结果转化为可用于实时植被系统的规范资产。",
   steps: [
+    { number: 1, title: "参考与形态分析", english: "REFERENCE & FORM ANALYSIS" },
+    { number: 2, title: "AI多视图方案生成", english: "AI MULTI-VIEW GENERATION" },
+    { number: 3, title: "AI基础模型生成", english: "AI BASE MESH GENERATION" },
+    { number: 4, title: "ZBrush人工树干雕刻", english: "ZBRUSH TRUNK SCULPTING" },
+    { number: 5, title: "RizomUV重构", english: "UV RECONSTRUCTION" },
+    { number: 6, title: "高低模烘焙", english: "HIGH-TO-LOW POLY BAKING" },
+    { number: 7, title: "Substance Painter树干贴图制作", english: "SUBSTANCE PAINTER TEXTURING" },
+  ] satisfies readonly PipelineStep[],  eyebrow: "AI-ASSISTED VEGETATION ASSET PIPELINE",
+  title: "植被AI辅助资产管线落地",
+  subtitle:
+    "从真实树干与枝叶参考出发，通过AI多视图生成和基础模型建立完成前期形态验证，再结合ZBrush雕刻、UV重构、高低模烘焙与Substance Painter贴图制作形成树干基础资产；随后完成枝干形态提取、AI枝叶参考、SpeedTree枝叶制作、法线迭代、2:1纹理图集规划、植被组装、风动、球形法线及Billboard处理，最终形成可用于UE5实时环境的完整植被资产体系。",
+  boardDescription:
+    "两阶段流程将树干基础资产与枝叶生产、植被整合、风动、法线及远景表现串联为一套可复用的实时植被资产管线。",
+  phases: [
     {
       number: 1,
-      title: "参考与形态分析",
-      english: "REFERENCE ANALYSIS",
+      title: "树干AI基础资产落地",
+      english: "TREE TRUNK ASSET FOUNDATION",
+      steps: [
+        { number: 1, title: "参考与形态分析", english: "REFERENCE & FORM ANALYSIS" },
+        { number: 2, title: "AI多视图方案生成", english: "AI MULTI-VIEW GENERATION" },
+        { number: 3, title: "AI基础模型生成", english: "AI BASE MESH GENERATION" },
+        { number: 4, title: "ZBrush人工树干雕刻", english: "ZBRUSH TRUNK SCULPTING" },
+        { number: 5, title: "RizomUV重构", english: "UV RECONSTRUCTION" },
+        { number: 6, title: "高低模烘焙", english: "HIGH-TO-LOW POLY BAKING" },
+        { number: 7, title: "Substance Painter树干贴图制作", english: "SUBSTANCE PAINTER TEXTURING" },
+      ],
     },
     {
       number: 2,
-      title: "AI多视图方案生成",
-      english: "AI MULTI-VIEW GENERATION",
+      title: "枝叶制作与植被整合",
+      english: "FOLIAGE PRODUCTION & ASSEMBLY",
+      steps: [
+        { number: 8, title: "提取真实枝干形态", english: "BRANCH FORM EXTRACTION" },
+        { number: 9, title: "AI生成枝叶参考", english: "AI FOLIAGE REFERENCE GENERATION" },
+        { number: 10, title: "SpeedTree制作枝叶及材质测试", english: "SPEEDTREE FOLIAGE & MATERIAL TESTING" },
+        { number: 11, title: "法线迭代", english: "NORMAL ITERATION" },
+        { number: 12, title: "2:1植被纹理图集规划", english: "2:1 VEGETATION ATLAS PLANNING" },
+        { number: 13, title: "DCC枝叶插片制作与SpeedTree效果验证", english: "DCC FOLIAGE CARD CREATION & SPEEDTREE VALIDATION" },
+        { number: 14, title: "SpeedTree整体植被制作", english: "SPEEDTREE VEGETATION ASSEMBLY" },
+        { number: 15, title: "IGTools风动制作", english: "IGTOOLS WIND SETUP" },
+        { number: 16, title: "球形法线烘焙与Shader法线混合", english: "SPHERICAL NORMAL BAKING & SHADER BLENDING" },
+        { number: 17, title: "Billboard与远景表现", english: "BILLBOARD & DISTANT REPRESENTATION" },
+      ],
     },
-    {
-      number: 3,
-      title: "AI基础模型生成",
-      english: "AI BASE MESH GENERATION",
-    },
-    {
-      number: 4,
-      title: "ZBrush人工树干雕刻",
-      english: "ZBRUSH TRUNK SCULPTING",
-    },
-    {
-      number: 5,
-      title: "UV重构",
-      english: "UV RECONSTRUCTION",
-    },
-    {
-      number: 6,
-      title: "高低模烘焙",
-      english: "HIGH-TO-LOW POLY BAKING",
-    },
-    {
-      number: 7,
-      title: "Speedtree制作",
-      english: "SPEEDTREE PRODUCTION",
-    },
-  ] satisfies readonly PipelineStep[],
+  ] satisfies readonly PipelinePhase[],
 } as const;
 
 function treeTrunkMediaLabel(fileName: string) {

@@ -38,7 +38,7 @@ export function ContactSection() {
 
   return (
     <section className="content-section contact-section" id="contact">
-      <SectionHeader index="13" eyebrow="CONTACT" title="项目职责与联系方式" />
+      <SectionHeader index="12" eyebrow="CONTACT" title="项目职责与联系方式" />
 
       <div className="contact-layout">
         <div>

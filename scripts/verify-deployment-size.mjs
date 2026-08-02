@@ -37,7 +37,7 @@ const jsonReportPath = path.join(
 );
 const maximumBytes = 200 * 1024 * 1024;
 const maximumSingleFileBytes = 100 * 1024 * 1024;
-const expectedDronePath = "portfolio/无人机/无人机2.mp4";
+
 const imageExtensions = new Set([
   ".png",
   ".jpg",
@@ -240,9 +240,7 @@ async function main() {
   const originalPortfolioImages = images
     .filter((file) => file.relativePath.startsWith("portfolio/"))
     .map((file) => file.relativePath);
-  const unexpectedVideos = videos
-    .filter((file) => file.relativePath !== expectedDronePath)
-    .map((file) => file.relativePath);
+  const unexpectedVideos = videos.map((file) => file.relativePath);
   const walkthroughVideos = videos
     .filter(
       (file) =>

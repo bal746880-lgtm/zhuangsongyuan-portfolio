@@ -1,38 +1,24 @@
-import type { MediaFolder } from "../../data/media";
-import { imagesIn, videosIn } from "../../utils/mediaHelpers";
-import { DroneVideoPlayer } from "../media/DroneVideoPlayer";
-import { PlaceholderPanel } from "../ui/PlaceholderPanel";
+import { fullProjectVideo } from "../../data/videos";
+import { BilibiliPlayer } from "../media/BilibiliPlayer";
 import { SectionHeader } from "../ui/SectionHeader";
 
-export function DroneSection({ media }: { media?: MediaFolder }) {
-  const [video] = videosIn(media);
-  const [poster] = imagesIn(media);
-
+export function DroneSection() {
   return (
     <section className="content-section" id="drone">
       <SectionHeader
         index="04"
-        eyebrow="DRONE OVERVIEW"
-        title="无人机全景"
-        titleAside={
-          <span className="drone-section__viewing-note">
-            完整跑图与无人机视频可于网站末尾观看
-          </span>
-        }
-        description="通过连续航拍镜头展示场景规模、空间层级与区域之间的衔接关系。"
+        eyebrow="FULL DRONE & GAMEPLAY VIDEO"
+        title="完整无人机与人物跑图视频"
+        description="通过完整无人机镜头与人物跑图，集中展示《西福寺》的场景规模、空间层级、区域衔接及玩家游览体验。"
       />
-      {video ? (
-        <div className="video-stack">
-          <DroneVideoPlayer
-            video={video}
-            poster={poster?.src ?? poster?.url}
-            title="无人机全景"
-            description="通过连续高空镜头观察寺庙空间、建筑关系与整体环境层次。"
-          />
-        </div>
-      ) : (
-        <PlaceholderPanel label="视频待接入" detail="“无人机”文件夹中未读取到视频。" />
-      )}
+      <div className="video-stack">
+        <BilibiliPlayer
+          embedUrl={fullProjectVideo.embedUrl}
+          externalUrl={fullProjectVideo.externalUrl}
+          title="完整无人机与人物跑图视频"
+          description="通过完整无人机镜头与人物跑图，集中展示《西福寺》的场景规模、空间层级、区域衔接及玩家游览体验。"
+        />
+      </div>
     </section>
   );
 }

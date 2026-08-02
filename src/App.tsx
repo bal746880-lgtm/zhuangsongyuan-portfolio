@@ -12,7 +12,6 @@ import { OverviewSection } from "./components/sections/OverviewSection";
 import { PcgSection } from "./components/sections/PcgSection";
 import { SelectedStillsSection } from "./components/sections/SelectedStillsSection";
 import { VegetationSection } from "./components/sections/VegetationSection";
-import { WalkthroughSection } from "./components/sections/WalkthroughSection";
 import { chapterFolderNames, getChapter } from "./data/media";
 import { usePortfolioManifest } from "./hooks/usePortfolioManifest";
 import { useMediaProtection } from "./hooks/useMediaProtection";
@@ -62,7 +61,7 @@ export default function App() {
         <SelectedStillsSection
           media={getChapter(manifest, chapterFolderNames.selectedStills)}
         />
-        <DroneSection media={getChapter(manifest, chapterFolderNames.drone)} />
+        <DroneSection />
         <OverviewSection
           media={getChapter(manifest, chapterFolderNames.overview)}
         />
@@ -78,9 +77,6 @@ export default function App() {
         <PcgSection media={getChapter(manifest, chapterFolderNames.pcg)} />
         <EnvironmentStillsSection
           media={getChapter(manifest, chapterFolderNames.environmentStills)}
-        />
-        <WalkthroughSection
-          media={getChapter(manifest, chapterFolderNames.walkthrough)}
         />
         <ContactSection />
       </main>
