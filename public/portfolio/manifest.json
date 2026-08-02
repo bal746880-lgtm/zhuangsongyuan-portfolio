@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-02T13:33:05.925Z",
+  "generatedAt": "2026-08-02T15:41:52.840Z",
   "chapters": {
     "主视觉封面": {
       "name": "主视觉封面",
@@ -1182,53 +1182,62 @@
             {
               "name": "6.场景效果展示.png",
               "relativePath": "道具AI流程管线落地\\6.场景效果展示.png",
-              "url": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=c243ebc5ad29",
-              "src": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=c243ebc5ad29",
+              "url": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=633cf9052758",
+              "src": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=633cf9052758",
               "extension": ".webp",
               "kind": "image",
               "sortValue": 6,
               "naturalOrder": 6,
-              "sizeBytes": 417364,
-              "width": 1837,
+              "sizeBytes": 247900,
+              "width": 3266,
               "height": 1837,
-              "aspectRatio": 1,
+              "aspectRatio": 1.7778987479586281,
               "alt": "6.场景效果展示",
-              "srcSet": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=c243ebc5ad29 960w, /portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1440.q96.webp?v=70db1efb0354 1440w",
+              "srcSet": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=633cf9052758 960w, /portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1440.q96.webp?v=6684490524bc 1440w, /portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1920.q96.webp?v=d4c3ddf19f97 1920w",
               "sizes": "(max-width: 767px) 90vw, (max-width: 1199px) 82vw, min(78vw, 1480px)",
               "losslessPath": "/portfolio/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png",
               "q92Path": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp",
               "displayVariants": [
                 {
-                  "src": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=c243ebc5ad29",
+                  "src": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp?v=633cf9052758",
                   "path": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w960.q96.webp",
                   "width": 960,
-                  "height": 960,
-                  "fileSize": 417364,
+                  "height": 540,
+                  "fileSize": 247900,
                   "quality": 96,
                   "format": "webp"
                 },
                 {
-                  "src": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1440.q96.webp?v=70db1efb0354",
+                  "src": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1440.q96.webp?v=6684490524bc",
                   "path": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1440.q96.webp",
                   "width": 1440,
-                  "height": 1440,
-                  "fileSize": 827374,
+                  "height": 810,
+                  "fileSize": 497902,
+                  "quality": 96,
+                  "format": "webp"
+                },
+                {
+                  "src": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1920.q96.webp?v=d4c3ddf19f97",
+                  "path": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1920.q96.webp",
+                  "width": 1920,
+                  "height": 1080,
+                  "fileSize": 828418,
                   "quality": 96,
                   "format": "webp"
                 }
               ],
-              "lightboxSrc": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w1837.q96.webp?v=795712a0eb29",
-              "lightboxWidth": 1837,
-              "lightboxHeight": 1837,
+              "lightboxSrc": "/portfolio-optimized-q92/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png.w2560.q96.webp?v=cfc1fdfcd85f",
+              "lightboxWidth": 2560,
+              "lightboxHeight": 1440,
               "imageCategory": "C",
               "sectionId": "modular",
               "quality": 96,
-              "fileSize": 417364,
+              "fileSize": 247900,
               "isDisplayed": true,
               "originalPath": "/portfolio/%E6%A8%A1%E5%9D%97%E5%8C%96%E5%BB%BA%E7%AD%91%E4%B8%8E%E9%81%93%E5%85%B7/%E9%81%93%E5%85%B7AI%E6%B5%81%E7%A8%8B%E7%AE%A1%E7%BA%BF%E8%90%BD%E5%9C%B0/6.%E5%9C%BA%E6%99%AF%E6%95%88%E6%9E%9C%E5%B1%95%E7%A4%BA.png",
               "optimizedPath": null,
               "optimizedFormat": null,
-              "originalSizeBytes": 6105261
+              "originalSizeBytes": 10007268
             }
           ],
           "children": []

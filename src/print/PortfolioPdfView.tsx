@@ -1,33 +1,30 @@
-import {
-  type CSSProperties,
-  useEffect,
-} from "react";
+import { type ReactNode, useEffect } from "react";
 import {
   aboutParagraphs,
   awards,
   careerPath,
+  coreCapabilities,
   profileFacts,
 } from "../data/experience";
-import type {
-  MediaFile,
-  MediaFolder,
-  PortfolioManifest,
-} from "../data/media";
 import {
-  chapterFolderNames,
-  getChapter,
-} from "../data/media";
+  propAiPipeline,
+  treeTrunkAiPipeline,
+  type PipelineMediaCopy,
+  type PipelineStep,
+} from "../data/aiAssetPipelines";
+import type { MediaFile, MediaFolder, PortfolioManifest } from "../data/media";
+import { chapterFolderNames, getChapter } from "../data/media";
 import {
   overviewParagraphs,
+  overviewResponsibilities,
   pcgLabels,
   projectFacts,
   responsibilities,
   sectionCopy,
   software,
-  vegetationSourceFolderNumberByStep,
   vegetationSteps,
 } from "../data/portfolio";
-import { imageTitle, imagesIn } from "../utils/mediaHelpers";
+import { imagesIn } from "../utils/mediaHelpers";
 import { sortByLeadingNumber } from "../utils/mediaSort";
 import "./portfolio-pdf.css";
 
@@ -49,84 +46,47 @@ interface PdfImageSource {
   height: number;
 }
 
-interface PdfMediaGroupProps {
-  files: readonly MediaFile[];
-  altPrefix: string;
-  caption: string | ((file: MediaFile, index: number) => string);
-  title?: (file: MediaFile, index: number) => string;
-  layout?: "stack" | "two" | "three";
-  emailMode: boolean;
-  className?: string;
-}
-
-interface PdfSectionHeaderProps {
-  index: string;
-  eyebrow: string;
-  title: string;
-  description?: string;
-}
-
-type PdfImageStyle = CSSProperties & {
-  "--pdf-source-width": string;
-};
+type PdfPageKind = "full-bleed" | "single-centered" | "text-centered" | "grid";
 
 const contactItems = [
   ["姓名", "庄松源"],
   ["微信", "18371378303"],
   ["电话", "18371378303"],
   ["邮箱", "1815258404@qq.com"],
+  ["网站", "https://zhuangsongyuan.online"],
 ] as const;
 
 function visibleImages(folder?: MediaFolder): MediaFile[] {
   return imagesIn(folder).filter((file) => file.isDisplayed !== false);
 }
 
-function selectPdfSource(
-  file: MediaFile,
-  emailMode: boolean,
-): PdfImageSource {
-  const highQualityEmail =
-    new URLSearchParams(window.location.search).get(
-      "emailHighQuality",
-    ) === "1";
+function folderByNumber(folder: MediaFolder | undefined, value: number) {
+  return folder?.children.find((child) => child.sortValue === value);
+}
+
+function selectPdfSource(file: MediaFile): PdfImageSource {
   const variants = [...(file.displayVariants ?? [])].sort(
     (left, right) => left.width - right.width,
   );
-
-  if (emailMode && !highQualityEmail && variants.length) {
-    const preferred =
-      variants.filter((variant) => variant.width <= 1600).at(-1) ??
-      variants[0];
-    return {
-      src: preferred.src,
-      width: preferred.width,
-      height: preferred.height,
-    };
-  }
-
   return {
-    src:
-      file.lightboxSrc ??
-      variants.at(-1)?.src ??
-      file.src ??
-      file.url,
-    width:
-      file.lightboxWidth ??
-      variants.at(-1)?.width ??
-      file.width ??
-      1,
-    height:
-      file.lightboxHeight ??
-      variants.at(-1)?.height ??
-      file.height ??
-      1,
+    src: file.lightboxSrc ?? variants.at(-1)?.src ?? file.src ?? file.url,
+    width: file.lightboxWidth ?? variants.at(-1)?.width ?? file.width ?? 1,
+    height: file.lightboxHeight ?? variants.at(-1)?.height ?? file.height ?? 1,
   };
 }
 
-function chunkFiles(
-  files: readonly MediaFile[],
-  size: number,
-): MediaFile[][] {
+function imageAspectRatio(file: MediaFile) {
+  const width = file.width ?? file.lightboxWidth ?? 0;
+  const height = file.height ?? file.lightboxHeight ?? 0;
+  return width && height ? width / height : 0;
+}
+
+function isNearSixteenNine(file: MediaFile) {
+  const aspectRatio = imageAspectRatio(file);
+  return Boolean(aspectRatio && Math.abs(aspectRatio - 16 / 9) <= 0.015);
+}
+
+function chunkFiles(files: readonly MediaFile[], size: number) {
   const chunks: MediaFile[][] = [];
   for (let index = 0; index < files.length; index += size) {
     chunks.push(files.slice(index, index + size));
@@ -134,17 +94,50 @@ function chunkFiles(
   return chunks;
 }
 
+function PdfPage({
+  kind,
+  label,
+  chapter,
+  className = "",
+  children,
+  step,
+}: {
+  kind: PdfPageKind;
+  label: string;
+  chapter?: string;
+  className?: string;
+  children: ReactNode;
+  step?: number;
+}) {
+  return (
+    <section
+      className={`pdf-page pdf-page--${kind} ${className}`}
+      data-pdf-page="true"
+      data-pdf-page-kind={kind}
+      data-pdf-page-label={label}
+      data-pdf-chapter={chapter}
+      data-pdf-step={step}
+      aria-label={label}
+    >
+      {children}
+    </section>
+  );
+}
+
 function PdfSectionHeader({
   index,
   eyebrow,
   title,
   description,
-}: PdfSectionHeaderProps) {
+}: {
+  index?: string;
+  eyebrow: string;
+  title: string;
+  description?: string;
+}) {
   return (
     <header className="pdf-section-header">
-      <span className="pdf-section-header__index" aria-hidden="true">
-        {index}
-      </span>
+      {index ? <span className="pdf-section-header__index">{index}</span> : null}
       <div>
         <p className="pdf-eyebrow">{eyebrow}</p>
         <h2>{title}</h2>
@@ -172,20 +165,8 @@ function PdfSubheading({
   );
 }
 
-function PdfImage({
-  file,
-  alt,
-  emailMode,
-}: {
-  file: MediaFile;
-  alt: string;
-  emailMode: boolean;
-}) {
-  const source = selectPdfSource(file, emailMode);
-  const style: PdfImageStyle = {
-    "--pdf-source-width": `${source.width}px`,
-  };
-
+function PdfImage({ file, alt }: { file: MediaFile; alt: string }) {
+  const source = selectPdfSource(file);
   return (
     <img
       src={source.src}
@@ -199,629 +180,603 @@ function PdfImage({
       data-image-category={file.imageCategory ?? "A"}
       data-section-id={file.sectionId ?? "unknown"}
       data-lossless-source={file.losslessPath ?? undefined}
-      style={style}
     />
   );
 }
 
-function PdfMediaCard({
+function PdfMediaFrame({
   file,
   alt,
-  title,
-  caption,
-  emailMode,
 }: {
   file: MediaFile;
   alt: string;
-  title: string;
-  caption: string;
-  emailMode: boolean;
 }) {
   return (
     <figure
-      className={`pdf-media-card ${
-        file.imageCategory === "C" ? "pdf-media-card--technical" : ""
-      }`}
-      data-original-path={file.originalPath}
+      className={`pdf-media-frame ${file.imageCategory === "C" ? "pdf-media-frame--technical" : ""}`}
       data-file-name={file.name}
       data-sort-value={file.sortValue ?? undefined}
     >
-      <div className="pdf-media-card__frame">
-        <PdfImage file={file} alt={alt} emailMode={emailMode} />
-      </div>
-      <figcaption>
-        <span>{title}</span>
-        <span>{caption}</span>
-      </figcaption>
+      <PdfImage file={file} alt={alt} />
     </figure>
   );
 }
 
-function PdfMediaGroup({
+function layoutForCount(count: number) {
+  if (count >= 5) return "five";
+  if (count === 4) return "four";
+  if (count === 3) return "three";
+  if (count === 2) return "two";
+  return "one";
+}
+
+function PdfMediaGrid({
   files,
   altPrefix,
-  caption,
-  title,
-  layout = "stack",
-  emailMode,
   className = "",
-}: PdfMediaGroupProps) {
-  if (!files.length) return null;
-
-  const columns = layout === "three" ? 3 : layout === "two" ? 2 : 1;
-  const rows = chunkFiles(files, columns);
-
+}: {
+  files: readonly MediaFile[];
+  altPrefix: string;
+  className?: string;
+}) {
+  const layout = layoutForCount(files.length);
   return (
-    <div className={`pdf-media-group pdf-media-group--${layout} ${className}`}>
-      {rows.map((row, rowIndex) => (
-        <div
-          className={`pdf-media-row pdf-media-row--${row.length}`}
-          key={`${row[0].relativePath}-${rowIndex}`}
-        >
-          {row.map((file, index) => {
-            const absoluteIndex = rowIndex * columns + index;
-            const itemTitle =
-              title?.(file, absoluteIndex) ??
-              imageTitle(file, absoluteIndex);
-            const itemCaption =
-              typeof caption === "function"
-                ? caption(file, absoluteIndex)
-                : caption;
-
-            return (
-              <PdfMediaCard
-                key={`${file.relativePath}-${file.name}`}
-                file={file}
-                alt={`${altPrefix}${itemTitle}`}
-                title={itemTitle}
-                caption={itemCaption}
-                emailMode={emailMode}
-              />
-            );
-          })}
-        </div>
+    <div
+      className={`pdf-media-grid pdf-media-grid--${layout} ${className}`}
+      data-pdf-layout={layout}
+    >
+      {files.map((file, index) => (
+        <PdfMediaFrame
+          key={`${file.relativePath}-${file.name}`}
+          file={file}
+          alt={`${altPrefix}${String(index + 1).padStart(2, "0")}`}
+        />
       ))}
     </div>
   );
 }
 
-function PdfHero({
-  image,
-  emailMode,
-}: {
-  image?: MediaFile;
-  emailMode: boolean;
-}) {
-  return (
-    <section className="pdf-cover" aria-label="西福寺项目主视觉">
-      {image ? (
-        <PdfImage
-          file={image}
-          alt="西福寺项目主视觉"
-          emailMode={emailMode}
-        />
-      ) : null}
-    </section>
-  );
-}
-
-function PdfAbout({
-  portrait,
-  emailMode,
-}: {
-  portrait?: MediaFile;
-  emailMode: boolean;
-}) {
-  return (
-    <section className="pdf-section pdf-about">
-      <PdfSectionHeader
-        index="02"
-        eyebrow="ABOUT & EXPERIENCE"
-        title="个人介绍与经历"
-        description="从视觉设计与硬科技创业实践，转向游戏地编与实时环境制作。"
-      />
-
-      <div className="pdf-about__overview">
-        <aside>
-          {portrait ? (
-            <figure className="pdf-about__portrait">
-              <PdfImage
-                file={portrait}
-                alt="庄松源个人照片"
-                emailMode={emailMode}
-              />
-            </figure>
-          ) : null}
-          <div className="pdf-about__role">
-            <strong>游戏地编 · 环境美术</strong>
-            <span>Level Artist · Environment Artist</span>
-          </div>
-        </aside>
-
-        <div>
-          <div className="pdf-about__bio">
-            {aboutParagraphs.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
-            ))}
-          </div>
-          <dl className="pdf-fact-grid pdf-fact-grid--profile">
-            {profileFacts.map((fact) => (
-              <div key={fact.label}>
-                <dt>{fact.label}</dt>
-                <dd>{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-
-      <section className="pdf-career">
-        <PdfSubheading eyebrow="CAREER PATH" title="经历路径" />
-        <div className="pdf-career__grid">
-          {careerPath.map((entry, index) => (
-            <article key={entry.time}>
-              <time>{entry.time}</time>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <h4>{entry.title}</h4>
-              <strong>{entry.subtitle}</strong>
-              <p>{entry.description}</p>
-              <ul>
-                {entry.tags.map((tag) => (
-                  <li key={tag}>{tag}</li>
-                ))}
-              </ul>
-              {index === 0 ? (
-                <div className="pdf-career__awards">
-                  <p>主要奖项</p>
-                  <ul>
-                    {awards.map((award) => (
-                      <li key={award}>{award}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </article>
-          ))}
-        </div>
-      </section>
-    </section>
-  );
-}
-
-function PdfSelectedStills({
-  files,
-  emailMode,
-}: {
-  files: readonly MediaFile[];
-  emailMode: boolean;
-}) {
-  return (
-    <section className="pdf-section">
-      <PdfSectionHeader
-        index="03"
-        eyebrow="KEY STILLS"
-        title="主要静帧"
-        description="集中展示最终场景中的核心构图、空间层级与氛围表现。"
-      />
-      <PdfMediaGroup
-        files={files}
-        altPrefix="西福寺精选静帧："
-        caption={(file) =>
-          (file.sortValue ?? 0) <= 3
-            ? "最终场景核心静帧。"
-            : "最终场景补充静帧。"
-        }
-        title={(file) =>
-          `图 ${String(file.sortValue ?? 0).padStart(2, "0")}`
-        }
-        emailMode={emailMode}
-      />
-    </section>
-  );
-}
-
-function PdfOverview({
-  files,
-  emailMode,
-}: {
-  files: readonly MediaFile[];
-  emailMode: boolean;
-}) {
-  return (
-    <section className="pdf-section">
-      <PdfSectionHeader
-        index="04"
-        eyebrow="PROJECT OVERVIEW"
-        title="项目概览与个人职责"
-      />
-
-      <div className="pdf-overview">
-        <div className="pdf-overview__copy">
-          {overviewParagraphs.map((paragraph) => (
-            <p key={paragraph.lead}>
-              <strong>{paragraph.lead}</strong>
-              <span>{paragraph.body}</span>
-            </p>
-          ))}
-        </div>
-        <dl className="pdf-fact-grid">
-          {projectFacts.map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <div className="pdf-subsection">
-        <PdfSubheading
-          eyebrow="CONCEPT REFERENCES"
-          title="概念参考"
-          description="两张图片用于场景关系、空间层次与秋季氛围参考。"
-        />
-        <PdfMediaGroup
-          files={files}
-          altPrefix="西福寺项目概念参考："
-          caption="概念原画中的空间关系、层次与氛围参考。"
-          layout="two"
-          emailMode={emailMode}
-        />
-      </div>
-
-      <div className="pdf-overview__lists">
-        <div>
-          <PdfSubheading eyebrow="RESPONSIBILITIES" title="主要职责" />
-          <ul>
-            {responsibilities.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <PdfSubheading eyebrow="SOFTWARE" title="使用软件" />
-          <ul>
-            {software.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PdfSimpleSection({
+function PdfSectionCoverPage({
+  chapter,
   index,
   eyebrow,
   title,
   description,
-  files,
-  altPrefix,
-  caption,
-  emailMode,
-  className = "",
 }: {
-  index: string;
+  chapter?: string;
+  index?: string;
   eyebrow: string;
   title: string;
-  description?: string;
-  files: readonly MediaFile[];
-  altPrefix: string;
-  caption: string;
-  emailMode: boolean;
-  className?: string;
+  description: string;
 }) {
   return (
-    <section className={`pdf-section ${className}`}>
-      <PdfSectionHeader
+    <PdfPage
+      kind="text-centered"
+      label={`${title}标题`}
+      chapter={chapter}
+      className="pdf-section-cover"
+    >
+      <div className="pdf-section-cover__content">
+        {index ? <span>{index}</span> : null}
+        <p className="pdf-eyebrow">{eyebrow}</p>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+    </PdfPage>
+  );
+}
+function PdfImageOnlyPage({
+  file,
+  label,
+  chapter,
+  alt,
+}: {
+  file: MediaFile;
+  label: string;
+  chapter?: string;
+  alt: string;
+}) {
+  const fullBleed = isNearSixteenNine(file);
+  return (
+    <PdfPage
+      kind={fullBleed ? "full-bleed" : "single-centered"}
+      label={label}
+      chapter={chapter}
+      className={`pdf-page--media-only ${imageAspectRatio(file) > 16 / 9 + 0.015 ? "pdf-page--wide-contained" : "pdf-page--contained-image"}` }
+    >
+      <div className="pdf-page__media-only" data-pdf-layout="stack">
+        <PdfImage file={file} alt={alt} />
+      </div>
+    </PdfPage>
+  );
+}
+
+function PdfGalleryPages({
+  files,
+  label,
+  chapter,
+  heading,
+  altPrefix,
+}: {
+  files: readonly MediaFile[];
+  label: string;
+  chapter?: string;
+  heading?: {
+    index?: string;
+    eyebrow: string;
+    title: string;
+    description?: string;
+  };
+  altPrefix: string;
+}) {
+  if (!files.length) return null;
+  return (
+    <>
+      {files.map((file, index) => {
+        if (index === 0 && heading) {
+          return (
+            <PdfPage
+              kind="single-centered"
+              label={`${label} 01`}
+              chapter={chapter}
+              className="pdf-page--with-heading"
+              key={`${file.relativePath}-${file.name}`}
+            >
+              <div className="pdf-page__content pdf-page__content--media">
+                <PdfSectionHeader {...heading} />
+                <PdfMediaGrid files={[file]} altPrefix={altPrefix} />
+              </div>
+            </PdfPage>
+          );
+        }
+        return (
+          <PdfImageOnlyPage
+            key={`${file.relativePath}-${file.name}`}
+            file={file}
+            label={`${label} ${String(index + 1).padStart(2, "0")}`}
+            chapter={index === 0 ? chapter : undefined}
+            alt={`${altPrefix}${String(index + 1).padStart(2, "0")}`}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function PdfGalleryWithSectionCover({
+  files,
+  chapter,
+  index,
+  eyebrow,
+  title,
+  description,
+  altPrefix,
+}: {
+  files: readonly MediaFile[];
+  chapter?: string;
+  index?: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  altPrefix: string;
+}) {
+  if (!files.length) return null;
+  return (
+    <>
+      <PdfSectionCoverPage
+        chapter={chapter}
         index={index}
         eyebrow={eyebrow}
         title={title}
         description={description}
       />
-      <PdfMediaGroup
-        files={files}
-        altPrefix={altPrefix}
-        caption={caption}
-        emailMode={emailMode}
-      />
-    </section>
-  );
-}
-
-function PdfVegetationShowcase({
-  rootImages,
-  emailMode,
-}: {
-  rootImages: readonly MediaFile[];
-  emailMode: boolean;
-}) {
-  const assets = rootImages.filter(
-    (image) => image.sortValue !== null && image.sortValue <= 2,
-  );
-  const scenes = rootImages.filter(
-    (image) =>
-      image.sortValue !== null &&
-      image.sortValue > 2 &&
-      image.sortValue !== 7,
-  );
-
-  return (
-    <section className="pdf-section">
-      <PdfSectionHeader
-        index="09"
-        eyebrow="VEGETATION ASSET SHOWCASE"
-        title="植被资产陈列"
-        description="展示植被资产在最终环境中的层次、受光与单独陈列效果。"
-      />
-
-      <PdfSubheading
-        eyebrow="IN-ENGINE RESULT"
-        title="最终场景中的植被"
-      />
-      <PdfMediaGroup
-        files={scenes}
-        altPrefix="植被最终场景："
-        caption="植被资产在最终环境中的层次与受光表现。"
-        title={(_, index) => `图 ${String(index + 1).padStart(2, "0")}`}
-        emailMode={emailMode}
-      />
-
-      <div className="pdf-subsection">
-        <PdfSubheading eyebrow="ASSET SHOWCASE" title="植被资产单独陈列" />
-        <PdfMediaGroup
-          files={assets}
-          altPrefix="植被资产陈列："
-          caption="植被资产单独陈列与细节检查。"
-          layout="two"
-          emailMode={emailMode}
+      {files.map((file, imageIndex) => (
+        <PdfImageOnlyPage
+          key={`${file.relativePath}-${file.name}`}
+          file={file}
+          label={`${title} ${String(imageIndex + 1).padStart(2, "0")}`}
+          alt={`${altPrefix}${String(imageIndex + 1).padStart(2, "0")}`}
         />
+      ))}
+    </>
+  );
+}
+function PdfHero({ image }: { image?: MediaFile }) {
+  if (!image) return null;
+  return (
+    <PdfPage
+      kind="single-centered"
+      label="封面"
+      chapter="封面"
+      className="pdf-cover"
+    >
+      <div className="pdf-page__media-only" data-pdf-layout="stack">
+        <PdfImage file={image} alt="西福寺项目主视觉" />
       </div>
-    </section>
+    </PdfPage>
   );
 }
 
-function vegetationStepLayout(
-  step: number,
-): "stack" | "two" | "three" {
-  if (step === 2 || step === 4) return "three";
-  if (step === 1 || step === 3 || step === 6 || step === 8) {
-    return "two";
-  }
-  return "stack";
-}
-
-function PdfVegetationPipeline({
-  media,
-  rootImages,
-  emailMode,
-}: {
-  media?: MediaFolder;
-  rootImages: readonly MediaFile[];
-  emailMode: boolean;
-}) {
-  const folders = sortByLeadingNumber(media?.children ?? []);
-  const billboard = rootImages.find((image) => image.sortValue === 7);
-
+function PdfAboutPages({ portrait }: { portrait?: MediaFile }) {
   return (
-    <section className="pdf-section">
-      <PdfSectionHeader
-        index="10"
-        eyebrow="VEGETATION PRODUCTION PIPELINE"
-        title="植被全流程制作过程展示"
-        description="从枝干形态研究、资产制作、贴图与风动，到法线处理与UE最终表现。"
-      />
-
-      <div className="pdf-process-list">
-        {vegetationSteps.map((step) => {
-          const sourceFolderNumber =
-            vegetationSourceFolderNumberByStep[step.stepNumber];
-          const folder = folders.find(
-            (candidate) => candidate.sortValue === sourceFolderNumber,
-          );
-          const allImages = visibleImages(folder);
-          const files =
-            step.stepNumber === 8 ? allImages.slice(0, 2) : allImages;
-
-          return (
-            <article
-              className="pdf-process-step"
-              data-pdf-step={step.stepNumber}
-              key={step.stepNumber}
-            >
-              <header>
-                <span>{String(step.stepNumber).padStart(2, "0")}</span>
-                <div>
-                  <p className="pdf-eyebrow">{step.english}</p>
-                  <h3>{step.title}</h3>
-                  <p>{step.body}</p>
-                  {"badge" in step && step.badge ? (
-                    <strong>{step.badge}</strong>
-                  ) : null}
-                </div>
-              </header>
-              <PdfMediaGroup
-                files={files}
-                altPrefix={`植被流程 ${String(step.stepNumber).padStart(2, "0")}：`}
-                caption={`第 ${step.stepNumber} 步的过程与结果记录。`}
-                layout={vegetationStepLayout(step.stepNumber)}
-                emailMode={emailMode}
-              />
-            </article>
-          );
-        })}
-      </div>
-
-      <aside className="pdf-billboard">
-        <PdfSubheading
-          eyebrow="BILLBOARD PIPELINE"
-          title="Billboard 制作流程"
-        />
-        {billboard ? (
-          <PdfMediaGroup
-            files={[billboard]}
-            altPrefix="Billboard 制作流程："
-            caption="Billboard 制作流程与场景效果。"
-            emailMode={emailMode}
+    <>
+      <PdfPage kind="text-centered" label="个人介绍" chapter="个人介绍与经历">
+        <div className="pdf-page__content">
+          <PdfSectionHeader
+            index="02"
+            eyebrow="ABOUT & EXPERIENCE"
+            title="个人介绍与经历"
+            description="从视觉设计与硬科技创业实践，转向游戏地编与实时环境制作。"
           />
-        ) : null}
-        <div>
-          <p>
-            Billboard以SpeedTree完整三维植被为基础，通过Depth Preview检查树冠体积和内部层次；随后在Blender中将烘焙法线写入Vertex
-            Color的RGB通道，并将AO写入A通道。
-          </p>
-          <p>
-            在UE中输出Base Color、Vertex Normal与AO后生成远景贴图，并通过材质重建法线、AO与双面受光。
-          </p>
+          <div className="pdf-about-overview">
+            <aside>
+              {portrait ? (
+                <figure
+                  className="pdf-about-portrait"
+                  data-pdf-layout="one"
+                  data-pdf-portrait="true"
+                >
+                  <PdfImage file={portrait} alt="庄松源个人照片" />
+                </figure>
+              ) : null}
+              <div className="pdf-about-role">
+                <strong>游戏地编 · 环境美术</strong>
+                <span>Level Artist · Environment Artist</span>
+              </div>
+            </aside>
+            <div>
+              <div className="pdf-about-bio">
+                {aboutParagraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              </div>
+              <dl className="pdf-fact-grid pdf-fact-grid--profile">
+                {profileFacts.map((fact) => (
+                  <div key={fact.label}>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
         </div>
-      </aside>
-    </section>
+      </PdfPage>
+      <PdfPage kind="text-centered" label="核心能力">
+        <div className="pdf-page__content pdf-page__content--narrow">
+          <PdfSubheading eyebrow="CORE CAPABILITIES" title="核心能力" />
+          <ol className="pdf-capabilities">
+            {coreCapabilities.map((capability, index) => (
+              <li className={index === 0 ? "pdf-capabilities__featured" : ""} key={capability.title}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <strong>{capability.title}</strong>
+                  <small>{capability.english}</small>
+                  {"description" in capability ? <p>{capability.description}</p> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </PdfPage>
+      <PdfPage kind="text-centered" label="经历路径">
+        <div className="pdf-page__content">
+          <PdfSubheading eyebrow="CAREER PATH" title="经历路径" />
+          <div className="pdf-career-grid">
+            {careerPath.map((entry, index) => (
+              <article key={entry.time}>
+                <time>{entry.time}</time>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <h4>{entry.title}</h4>
+                <strong>{entry.subtitle}</strong>
+                <p>{entry.description}</p>
+                <ul>{entry.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
+                {index === 0 ? (
+                  <div className="pdf-career-awards">
+                    <p>主要奖项</p>
+                    <ul>{awards.map((award) => <li key={award}>{award}</li>)}</ul>
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      </PdfPage>
+    </>
   );
 }
 
-function PdfPcg({
+function PdfOverviewPages({ files }: { files: readonly MediaFile[] }) {
+  return (
+    <>
+      <PdfPage kind="text-centered" label="项目概览" chapter="项目概览与个人职责">
+        <div className="pdf-page__content">
+          <PdfSectionHeader index="04" eyebrow="PROJECT OVERVIEW" title="项目概览与个人职责" />
+          <div className="pdf-overview-grid">
+            <div className="pdf-overview-copy">
+              {overviewParagraphs.map((paragraph) => (
+                <p key={paragraph.lead}><strong>{paragraph.lead}</strong><span>{paragraph.body}</span></p>
+              ))}
+            </div>
+            <dl className="pdf-fact-grid">
+              {projectFacts.map(([label, value]) => (
+                <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </PdfPage>
+      <PdfPage kind="text-centered" label="项目职责与软件">
+        <div className="pdf-page__content pdf-page__content--narrow">
+          <div className="pdf-responsibility-layout">
+            <div>
+              <PdfSubheading eyebrow="RESPONSIBILITIES" title="主要职责" />
+              <ul className="pdf-responsibilities">
+                {overviewResponsibilities.map((item) => (
+                  <li className={"body" in item ? "pdf-responsibility-feature" : ""} key={item.title}>
+                    <strong>{item.title}</strong>
+                    {"body" in item ? <span>{item.body}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <PdfSubheading eyebrow="SOFTWARE" title="使用软件" />
+              <ul className="pdf-software-list">{software.map((item) => <li key={item}>{item}</li>)}</ul>
+            </div>
+          </div>
+        </div>
+      </PdfPage>
+      {files.length ? (
+        <PdfPage kind="grid" label="概念参考">
+          <div className="pdf-page__content pdf-page__content--media">
+            <PdfSubheading eyebrow="CONCEPT REFERENCES" title="概念参考" description="用于场景关系、空间层次与秋季氛围参考。" />
+            <PdfMediaGrid files={files} altPrefix="西福寺项目概念参考：" className="pdf-concept-grid" />
+          </div>
+        </PdfPage>
+      ) : null}
+    </>
+  );
+}
+
+function PdfPipelineFlowBoard({ steps }: { steps: readonly PipelineStep[] }) {
+  return (
+    <ol className={`pdf-pipeline-board pdf-pipeline-board--${steps.length}`}>
+      {steps.map((step) => (
+        <li key={`${step.number}-${step.title}`}>
+          <span>{String(step.number).padStart(2, "0")}</span>
+          <strong>{step.title}</strong>
+          <small>{step.english}</small>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PdfPropAiPages({
   files,
-  emailMode,
 }: {
   files: readonly MediaFile[];
-  emailMode: boolean;
 }) {
-  const process = files.filter(
-    (file) => file.sortValue !== null && file.sortValue <= 6,
-  );
-  const results = files.filter(
-    (file) => file.sortValue !== null && file.sortValue > 6,
-  );
-
   return (
-    <section className="pdf-section pdf-pcg">
-      <PdfSectionHeader
-        index="11"
-        eyebrow="MOSS PCG SYSTEM"
-        title="岩石苔藓 PCG 系统"
-        description={sectionCopy.pcg}
-      />
-      <div className="pdf-pcg-labels">
-        {pcgLabels.map((label) => (
-          <span key={label}>{label}</span>
+    <>
+      <PdfPage kind="text-centered" label="道具AI辅助资产管线">
+        <div className="pdf-page__content pdf-page__content--narrow">
+          <PdfSubheading eyebrow={propAiPipeline.eyebrow} title={propAiPipeline.title} description={propAiPipeline.subtitle} />
+          <PdfPipelineFlowBoard steps={propAiPipeline.steps} />
+          <p className="pdf-board-description">{propAiPipeline.boardDescription}</p>
+        </div>
+      </PdfPage>
+      {files.map((file, index) => {
+        const copy: PipelineMediaCopy = propAiPipeline.media[index] ?? {
+          title: `图 ${index + 1}`,
+          english: "PROP ASSET PROCESS",
+          description: "道具AI辅助资产管线过程记录。",
+          status: "PROCESS",
+        };
+        return (
+          <PdfPage kind="single-centered" label={`道具AI流程 ${String(index + 1).padStart(2, "0")}`} className="pdf-page--ai-media" key={`${file.relativePath}-${file.name}`}>
+            <div className="pdf-page__content pdf-page__content--media">
+              <header className="pdf-ai-header">
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div><p className="pdf-eyebrow">{copy.english}</p><h3>{copy.title}</h3><p>{copy.description}</p></div>
+                <strong>{copy.status}</strong>
+              </header>
+              <PdfMediaGrid files={[file]} altPrefix={`${propAiPipeline.title}：`} />
+            </div>
+          </PdfPage>
+        );
+      })}
+    </>
+  );
+}
+
+function PdfVegetationFlowPages() {
+  const [phaseOne, phaseTwo] = treeTrunkAiPipeline.phases;
+  return (
+    <PdfPage
+      kind="text-centered"
+      label="植被AI辅助资产管线"
+      chapter="植被全流程制作"
+      className="pdf-page--vegetation-flow"
+    >
+      <div className="pdf-page__content pdf-vegetation-flow">
+        <PdfSectionHeader
+          index="08"
+          eyebrow={treeTrunkAiPipeline.eyebrow}
+          title={treeTrunkAiPipeline.title}
+          description={treeTrunkAiPipeline.subtitle}
+        />
+        {[phaseOne, phaseTwo].map((phase) => (
+          <section
+            className="pdf-vegetation-phase"
+            data-pdf-vegetation-phase={phase.number}
+            key={phase.number}
+          >
+            <PdfSubheading
+              eyebrow={`PHASE ${String(phase.number).padStart(2, "0")} · ${phase.english}`}
+              title={phase.title}
+            />
+            <PdfPipelineFlowBoard steps={phase.steps} />
+          </section>
         ))}
+        <p className="pdf-board-description">{treeTrunkAiPipeline.boardDescription}</p>
       </div>
-      <PdfSubheading
-        eyebrow="PROCESS RECORDS"
-        title="生成与过滤过程"
-        description="距离衰减与法线/坡度过滤属于不同阶段，不将两者合并描述。"
+    </PdfPage>
+  );
+}
+
+function PdfVegetationStepPages({ media }: { media?: MediaFolder }) {
+  const folders = sortByLeadingNumber(media?.children ?? []);
+  return (
+    <>
+      {vegetationSteps.flatMap((step) => {
+        const folder = folders.find((candidate) => candidate.sortValue === step.stepNumber);
+        const files = visibleImages(folder);
+        if (!files.length) return [];
+        const splitIndex = Math.ceil(files.length / 2);
+        const chunks = step.stepNumber === 14
+          ? [files.slice(0, splitIndex), files.slice(splitIndex)].filter((chunk) => chunk.length)
+          : files.length > 5
+            ? chunkFiles(files, 2)
+            : [files];
+        return chunks.map((chunk, chunkIndex) => (
+          <PdfPage
+            kind={chunk.length === 1 ? "single-centered" : "grid"}
+            label={`植被步骤 ${String(step.stepNumber).padStart(2, "0")}${chunks.length > 1 ? `-${chunkIndex + 1}` : ""}`}
+            className={`pdf-page--process ${step.stepNumber === 14 ? "pdf-page--speedtree" : ""}`}
+            step={step.stepNumber}
+            key={`${step.stepNumber}-${chunkIndex}`}
+          >
+            <div className="pdf-page__content pdf-page__content--media">
+              {chunkIndex === 0 ? (
+                <header className="pdf-step-header">
+                  <span>{String(step.stepNumber).padStart(2, "0")}</span>
+                  <div>
+                    <p className="pdf-eyebrow">{step.english}</p>
+                    <h3>{step.title}</h3>
+                    <p>{step.body}</p>
+                    {"badge" in step && step.badge ? <strong>{step.badge}</strong> : null}
+                  </div>
+                </header>
+              ) : (
+                <p className="pdf-process-continuation">
+                  {String(step.stepNumber).padStart(2, "0")} · {step.english} · CONTINUED
+                </p>
+              )}
+              <PdfMediaGrid
+                files={chunk}
+                altPrefix={`植被流程 ${String(step.stepNumber).padStart(2, "0")}：`}
+                className={[
+                  step.stepNumber === 11 ? "pdf-leaf-normal-grid" : "",
+                  step.stepNumber === 14 ? `pdf-speedtree-grid pdf-speedtree-grid--${chunk.length}` : "",
+                ].filter(Boolean).join(" ")}
+              />
+            </div>
+          </PdfPage>
+        ));
+      })}
+    </>
+  );
+}
+
+function PdfPcgPages({ media }: { media?: MediaFolder }) {
+  const process = visibleImages(media).filter((file) => file.sortValue !== null && file.sortValue <= 6);
+  const assets = visibleImages(folderByNumber(media, 7));
+  const results = visibleImages(folderByNumber(media, 8));
+  const flowSteps = pcgLabels.map((label, index) => {
+    const [english, title] = label.split(" / ");
+    return { number: index + 1, title: title ?? label, english: english ?? label };
+  });
+  return (
+    <>
+      <PdfPage
+        kind="grid"
+        label="PCG生成与过滤过程"
+        chapter="岩石苔藓PCG系统"
+        className="pdf-page--pcg-system"
+      >
+        <div className="pdf-page__content pdf-pcg-system-layout">
+          <PdfSectionHeader index="09" eyebrow="MOSS PCG SYSTEM" title="岩石苔藓 PCG 系统" description={sectionCopy.pcg} />
+          <PdfPipelineFlowBoard steps={flowSteps} />
+          <PdfMediaGrid files={process} altPrefix="岩石苔藓 PCG 过程：" className="pdf-pcg-process-grid" />
+        </div>
+      </PdfPage>
+      <PdfPage kind="grid" label="苔藓资产制作流程" className="pdf-page--moss-assets">
+        <div className="pdf-page__content pdf-page__content--media">
+          <PdfSubheading
+            eyebrow="MOSS ASSET PRODUCTION"
+            title="苔藓资产制作流程"
+            description="从参考约束、AI基础模型、高低模烘焙到UE5材质制作，形成可用于岩石表面散布的苔藓资产。"
+          />
+          <PdfMediaGrid files={assets} altPrefix="苔藓资产制作流程：" className="pdf-moss-assets-grid" />
+        </div>
+      </PdfPage>
+      <PdfGalleryPages
+        files={results}
+        label="PCG最终场景应用"
+        heading={{ eyebrow: "FINAL PCG SCENE APPLICATION", title: "岩石苔藓PCG最终场景应用", description: "展示苔藓资产与岩石PCG系统在不同区域、坡度和光照条件下的最终落地效果。" }}
+        altPrefix="岩石苔藓 PCG 最终效果："
       />
-      <PdfMediaGroup
-        files={process}
-        altPrefix="岩石苔藓 PCG 过程："
-        caption="岩石表面苔藓的生成、衰减与过滤过程。"
-        emailMode={emailMode}
-      />
-      <div className="pdf-subsection">
-        <PdfSubheading
-          eyebrow="FINAL RESULT"
-          title="苔藓生成与场景应用"
-        />
-        <PdfMediaGroup
-          files={results}
-          altPrefix="岩石苔藓 PCG 最终效果："
-          caption="PCG生成结果与场景应用效果。"
-          emailMode={emailMode}
-        />
-      </div>
-    </section>
+    </>
   );
 }
 
 function PdfContact() {
   return (
-    <section className="pdf-section pdf-contact">
-      <PdfSectionHeader
-        index="13"
-        eyebrow="CONTACT"
-        title="项目职责与联系方式"
-      />
-      <div className="pdf-contact__layout">
-        <div>
-          <PdfSubheading
-            eyebrow="PROJECT RESPONSIBILITIES"
-            title="个人全流程制作"
-          />
-          <ul className="pdf-contact__responsibilities">
-            {responsibilities.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+    <PdfPage kind="text-centered" label="联系方式" chapter="项目职责与联系方式" className="pdf-contact">
+      <div className="pdf-page__content">
+        <PdfSectionHeader index="11" eyebrow="CONTACT" title="项目职责与联系方式" />
+        <div className="pdf-contact-layout">
+          <div>
+            <PdfSubheading eyebrow="PROJECT RESPONSIBILITIES" title="个人全流程制作" />
+            <ul className="pdf-contact-responsibilities">{responsibilities.map((item) => <li key={item}>{item}</li>)}</ul>
+            <div className="pdf-contact-ai">
+              <p className="pdf-eyebrow">SELF-DEVELOPED AI-ASSISTED ASSET PIPELINE</p>
+              <h4>自研AI辅助资产管线落地</h4>
+              <p>独立设计并落地AI辅助资产生产流程，将实景参考分析、AI多视图生成、基础模型生成、Blender网格清理与减面、RizomUV重构、ZBrush雕刻、高低模烘焙及UE场景适配进行串联，并实际应用于《西福寺》的道具与植被树干资产制作。</p>
+            </div>
+          </div>
+          <div className="pdf-contact-panel">
+            <p>期待参与更完整、更高质量的游戏环境制作。</p>
+            <dl>
+              {contactItems.map(([label, value]) => (
+                <div key={label}><dt>{label}</dt><dd>{label === "网站" ? <a href={value}>{value}</a> : value}</dd></div>
+              ))}
+            </dl>
+          </div>
         </div>
-        <div className="pdf-contact__panel">
-          <p>期待参与更完整、更高质量的游戏环境制作。</p>
-          <dl>
-            {contactItems.map(([label, value]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <footer className="pdf-contact-footer">
+          <div><strong>庄松源 · 西福寺 / XIFO TEMPLE</strong><span>游戏地编 · 环境美术</span></div>
+          <div><span>Level Artist · Environment Artist</span><span>Personal Project · Full Pipeline</span></div>
+        </footer>
       </div>
-      <footer>
-        <div>
-          <strong>庄松源 · 西福寺 / XIFO TEMPLE</strong>
-          <span>游戏地编 · 环境美术</span>
-        </div>
-        <div>
-          <span>Level Artist · Environment Artist</span>
-          <span>Personal Project · Full Pipeline</span>
-        </div>
-      </footer>
-    </section>
+    </PdfPage>
   );
 }
 
-export function PortfolioPdfView({
-  manifest,
-}: PortfolioPdfViewProps) {
+export function PortfolioPdfView({ manifest }: PortfolioPdfViewProps) {
   const searchParams = new URLSearchParams(window.location.search);
   const emailMode = searchParams.get("email") === "1";
-  const highQualityEmail =
-    searchParams.get("emailHighQuality") === "1";
-  const hero = visibleImages(
-    getChapter(manifest, chapterFolderNames.hero),
-  )[0];
-  const portrait = visibleImages(
-    getChapter(manifest, chapterFolderNames.profile),
-  )[0];
-  const selectedStills = visibleImages(
-    getChapter(manifest, chapterFolderNames.selectedStills),
-  );
-  const overview = visibleImages(
-    getChapter(manifest, chapterFolderNames.overview),
-  );
-  const layout = visibleImages(
-    getChapter(manifest, chapterFolderNames.layout),
-  );
-  const modular = visibleImages(
-    getChapter(manifest, chapterFolderNames.modular),
-  );
-  const materials = visibleImages(
-    getChapter(manifest, chapterFolderNames.materials),
-  );
-  const sdNodes = visibleImages(
-    getChapter(manifest, chapterFolderNames.sdNodes),
-  );
-  const vegetationFolder = getChapter(
-    manifest,
-    chapterFolderNames.vegetation,
-  );
-  const vegetationRoot = visibleImages(vegetationFolder);
-  const pcg = visibleImages(
-    getChapter(manifest, chapterFolderNames.pcg),
-  );
-  const environment = visibleImages(
-    getChapter(manifest, chapterFolderNames.environmentStills),
-  );
+  const highQualityEmail = searchParams.get("emailHighQuality") === "1";
+  const hero = visibleImages(getChapter(manifest, chapterFolderNames.hero))[0];
+  const portrait = visibleImages(getChapter(manifest, chapterFolderNames.profile))[0];
+  const selectedStills = visibleImages(getChapter(manifest, chapterFolderNames.selectedStills));
+  const overview = visibleImages(getChapter(manifest, chapterFolderNames.overview));
+  const layout = visibleImages(getChapter(manifest, chapterFolderNames.layout));
+  const modularFolder = getChapter(manifest, chapterFolderNames.modular);
+  const modularRoot = visibleImages(modularFolder);
+  const propCollection = modularRoot.find((image) => image.sortValue === 4 && (image.name.includes("道具") || image.name === "4.png")) ?? null;
+  const modular = propCollection ? modularRoot.filter((image) => image.relativePath !== propCollection.relativePath) : modularRoot;
+  const propAiFolder = modularFolder?.children.find((folder) => propAiPipeline.folderMatcher(folder.name));
+  const propAiImages = visibleImages(propAiFolder);
+  const materials = visibleImages(getChapter(manifest, chapterFolderNames.materials));
+  const sdNodes = visibleImages(getChapter(manifest, chapterFolderNames.sdNodes));
+  const vegetationFolder = getChapter(manifest, chapterFolderNames.vegetation);
+  const ecosystem = visibleImages(folderByNumber(vegetationFolder, 0));
+  const ecosystemShowcase = ecosystem.slice(0, 3);
+  const subsurfaceScattering = ecosystem.slice(3, 6);
+  const vegetationFinalEffects = visibleImages(folderByNumber(vegetationFolder, 18));
+  const pcgFolder = getChapter(manifest, chapterFolderNames.pcg);
+  const environment = visibleImages(getChapter(manifest, chapterFolderNames.environmentStills));
 
   useEffect(() => {
     let cancelled = false;
@@ -834,54 +789,29 @@ export function PortfolioPdfView({
 
     const prepare = async () => {
       await document.fonts.ready;
-      const images = Array.from(
-        document.querySelectorAll<HTMLImageElement>(
-          ".portfolio-pdf img",
-        ),
-      );
+      const images = Array.from(document.querySelectorAll<HTMLImageElement>(".portfolio-pdf img"));
       const errors: string[] = [];
-
-      await Promise.all(
-        images.map(async (image) => {
-          if (!image.complete) {
-            await new Promise<void>((resolve) => {
-              const finish = () => resolve();
-              image.addEventListener("load", finish, { once: true });
-              image.addEventListener("error", finish, { once: true });
-            });
-          }
-
-          if (!image.naturalWidth || !image.naturalHeight) {
-            errors.push(
-              image.dataset.pdfSource ??
-                image.currentSrc ??
-                image.src,
-            );
-            return;
-          }
-
-          try {
-            await image.decode();
-          } catch {
-            errors.push(
-              image.dataset.pdfSource ??
-                image.currentSrc ??
-                image.src,
-            );
-          }
-        }),
-      );
-
+      await Promise.all(images.map(async (image) => {
+        if (!image.complete) {
+          await new Promise<void>((resolve) => {
+            const finish = () => resolve();
+            image.addEventListener("load", finish, { once: true });
+            image.addEventListener("error", finish, { once: true });
+          });
+        }
+        if (!image.naturalWidth || !image.naturalHeight) {
+          errors.push(image.dataset.pdfSource ?? image.currentSrc ?? image.src);
+          return;
+        }
+        try { await image.decode(); } catch { errors.push(image.dataset.pdfSource ?? image.currentSrc ?? image.src); }
+      }));
       if (cancelled) return;
       window.__PORTFOLIO_PDF_IMAGE_COUNT__ = images.length;
       window.__PORTFOLIO_PDF_ERRORS__ = [...new Set(errors)];
       window.__PORTFOLIO_PDF_READY__ = errors.length === 0;
-      document.body.dataset.pdfReady =
-        errors.length === 0 ? "true" : "false";
+      document.body.dataset.pdfReady = errors.length === 0 ? "true" : "false";
     };
-
     void prepare();
-
     return () => {
       cancelled = true;
       document.body.classList.remove("portfolio-pdf-body");
@@ -892,85 +822,83 @@ export function PortfolioPdfView({
   }, [emailMode, highQualityEmail, manifest]);
 
   return (
-    <main
-      className={`portfolio-pdf ${
-        emailMode ? "portfolio-pdf--email" : ""
-      }`}
-      data-pdf-variant={
-        highQualityEmail
-          ? "email-high-quality"
-          : emailMode
-            ? "email"
-            : "high"
-      }
-    >
-      <PdfHero image={hero} emailMode={emailMode} />
-      <PdfAbout portrait={portrait} emailMode={emailMode} />
-      <PdfSelectedStills
+    <main className={`portfolio-pdf ${emailMode ? "portfolio-pdf--email" : ""}`} data-pdf-variant={highQualityEmail ? "email-high-quality" : emailMode ? "email" : "high"}>
+      <PdfHero image={hero} />
+      <PdfAboutPages portrait={portrait} />
+      <PdfGalleryWithSectionCover
         files={selectedStills}
-        emailMode={emailMode}
+        chapter="主要静帧"
+        index="03"
+        eyebrow="KEY STILLS"
+        title="主要静帧"
+        description="集中展示最终场景中的核心构图、空间层级与氛围表现。"
+        altPrefix="西福寺主要静帧："
       />
-      <PdfOverview files={overview} emailMode={emailMode} />
-      <PdfSimpleSection
-        index="05"
-        eyebrow="CONCEPT & LAYOUT"
-        title="规划与跑图路线"
-        description={sectionCopy.layout}
+      <PdfOverviewPages files={overview} />
+      <PdfGalleryPages
         files={layout}
+        label="规划与跑图路线"
+        chapter="规划与跑图路线"
+        heading={{ index: "05", eyebrow: "CONCEPT & LAYOUT", title: "规划与跑图路线", description: sectionCopy.layout }}
         altPrefix="西福寺规划与跑图路线："
-        caption="地图结构、空间节点与跑图路线规划。"
-        emailMode={emailMode}
-        className="pdf-layout-section"
       />
-      <PdfSimpleSection
-        index="06"
-        eyebrow="MODULAR ARCHITECTURE"
-        title="模块化建筑与道具"
-        description={sectionCopy.modular}
+      <PdfGalleryPages
         files={modular}
+        label="模块化建筑与道具"
+        chapter="模块化建筑与道具"
+        heading={{ index: "06", eyebrow: "MODULAR ARCHITECTURE", title: "模块化建筑与道具", description: sectionCopy.modular }}
         altPrefix="模块化建筑与道具："
-        caption="模块化建筑与环境道具制作记录。"
-        emailMode={emailMode}
       />
-      <PdfSimpleSection
+      <PdfPropAiPages files={propAiImages} />
+      {propCollection ? <PdfImageOnlyPage file={propCollection} label="AI辅助道具资产合集" alt="AI辅助资产管线完成的道具合集" /> : null}
+      <PdfGalleryWithSectionCover
+        files={materials}
+        chapter="程序化材质与场景应用"
         index="07"
         eyebrow="PROCEDURAL MATERIALS"
         title="程序化材质与场景应用"
         description={sectionCopy.materials}
-        files={materials}
         altPrefix="程序化材质展示："
-        caption="程序化材质结果与场景实际应用。"
-        emailMode={emailMode}
       />
-      <PdfSimpleSection
-        index="08"
-        eyebrow="SD GRAPH & PROCESS"
-        title="Substance Designer 节点与制作过程"
-        description="节点图保留完整界面和原始比例，按原始编号逐张展示。"
-        files={sdNodes}
-        altPrefix="Substance Designer 节点图："
-        caption="Substance Designer 节点与制作过程。"
-        emailMode={emailMode}
+      <PdfPage kind="grid" label="Substance Designer节点" className="pdf-page--sd-nodes">
+        <div className="pdf-page__content pdf-page__content--media">
+          <PdfSubheading
+            eyebrow="SD GRAPH & PROCESS"
+            title="Substance Designer 节点与制作过程"
+            description="四张节点图以2×2结构集中展示，保留完整界面、原始比例与可读小字。"
+          />
+          <PdfMediaGrid files={sdNodes} altPrefix="Substance Designer 节点图：" className="pdf-sd-grid" />
+        </div>
+      </PdfPage>
+      <PdfVegetationFlowPages />
+      <PdfVegetationStepPages media={vegetationFolder} />
+      <PdfGalleryWithSectionCover
+        files={ecosystemShowcase}
+        eyebrow="ECOSYSTEM SHOWCASE"
+        title="生态系统展示"
+        description="展示完整植被资产体系在UE5实时环境中的生态层次、树种变化、空间组合与整体场景表现。"
+        altPrefix="植被生态系统展示："
       />
-      <PdfVegetationShowcase
-        rootImages={vegetationRoot}
-        emailMode={emailMode}
+      <PdfGalleryWithSectionCover
+        files={subsurfaceScattering}
+        eyebrow="VEGETATION SUBSURFACE SCATTERING"
+        title="植被次表面散射效果展示"
+        description="集中展示枫树、银杏与竹类植被在逆光及侧逆光条件下的次表面散射表现，强化叶片的透光层次、色彩变化与真实受光效果。"
+        altPrefix="植被次表面散射效果："
       />
-      <PdfVegetationPipeline
-        media={vegetationFolder}
-        rootImages={vegetationRoot}
-        emailMode={emailMode}
+      <PdfGalleryPages
+        files={vegetationFinalEffects}
+        label="植被最终效果展示"
+        heading={{ eyebrow: "FINAL EFFECT SHOWCASE", title: "最终效果展示" }}
+        altPrefix="植被最终效果展示："
       />
-      <PdfPcg files={pcg} emailMode={emailMode} />
-      <PdfSimpleSection
-        index="12"
-        eyebrow="ENVIRONMENT STILLS"
-        title="场景静帧"
-        description="补充建筑、植被、地面、水面与环境细节镜头。"
+      <PdfPcgPages media={pcgFolder} />
+      <PdfGalleryPages
         files={environment}
+        label="场景静帧"
+        chapter="场景静帧"
+        heading={{ index: "10", eyebrow: "ENVIRONMENT STILLS", title: "场景静帧", description: "补充建筑、植被、地面、水面与环境细节镜头。" }}
         altPrefix="西福寺场景静帧："
-        caption="西福寺环境补充镜头。"
-        emailMode={emailMode}
       />
       <PdfContact />
     </main>

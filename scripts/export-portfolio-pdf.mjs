@@ -16,19 +16,19 @@ const projectRoot = path.resolve(
   "..",
 );
 const outputDirectory = path.join(projectRoot, "outputs");
-const primaryPdfPath = path.join(
+const highPdfPath = path.join(
   outputDirectory,
-  "庄松源_西福寺_作品集.pdf",
+  "庄松源_西福寺_作品集_高质量版_90MB.pdf",
 );
-const emailPdfPath = path.join(
+const lightPdfPath = path.join(
   outputDirectory,
-  "庄松源_西福寺_作品集_邮件版.pdf",
+  "庄松源_西福寺_作品集_轻量版_20MB.pdf",
 );
-const emailCandidateDirectory = path.join(
+const candidateDirectory = path.join(
   projectRoot,
   "tmp",
   "pdfs",
-  "email-high-quality",
+  "portfolio-export-candidates",
 );
 const viteCli = path.join(
   projectRoot,
@@ -44,35 +44,28 @@ const emailPreferredMinimumBytes = 92 * mebibyte;
 const emailPreferredMaximumBytes = 98 * mebibyte;
 const emailMaximumBytes = 100 * mebibyte;
 const emailTargetBytes = 95 * mebibyte;
-const emailHighQualityOnly = process.argv.includes(
-  "--email-high-quality",
-);
+const onlyHigh = process.argv.includes("--only=90mb");
+const onlyLight = process.argv.includes("--only=20mb");
 const skipBuild = process.argv.includes("--skip-build");
-const expectedVegetationTitle =
-  "ZB雕刻树干，八猴高低模烘焙及Speedtree制作";
+const expectedVegetationTitle = "植被AI辅助资产管线落地";
 const forbiddenVegetationTitles = [
+  "ZB雕刻树干，八猴高低模烘焙及Speedtree制作",
   "ZB雕刻树干，八猴高低模烘焙及ST焊接",
   "ZBrush 雕刻树干八猴烘焙高低模与Speedtree焊接制作",
 ];
-const expectedSectionTitles = [
+const expectedChapterOrder = [
+  "封面",
   "个人介绍与经历",
   "主要静帧",
   "项目概览与个人职责",
   "规划与跑图路线",
   "模块化建筑与道具",
   "程序化材质与场景应用",
-  "Substance Designer 节点与制作过程",
-  "植被资产陈列",
-  "植被全流程制作过程展示",
-  "岩石苔藓 PCG 系统",
+  "植被全流程制作",
+  "岩石苔藓PCG系统",
   "场景静帧",
   "项目职责与联系方式",
 ];
-const excludedPdfChapterNames = new Set([
-  "无人机",
-  "人物完整跑图",
-  "项目职责与联系方式",
-]);
 const manifestPath = path.join(
   projectRoot,
   "public",
@@ -148,6 +141,50 @@ const emailProfiles = {
     },
   },
 };
+for (const profile of Object.values(emailProfiles)) {
+  profile.layoutMaxWidths = {
+    five: 900,
+    four: 1200,
+    three: 1440,
+    two: 2000,
+  };
+}
+const lightProfiles = [
+  {
+    name: "light-high",
+    hero: 96,
+    scene: 92,
+    asset: 92,
+    portrait: 94,
+    technical: 93,
+    maxWidths: { hero: 1900, scene: 1700, asset: 1600, portrait: 1400, technical: 1900 },
+    layoutMaxWidths: { five: 620, four: 900, three: 960, two: 1400 },
+    flattenAlpha: true,
+  },
+  {
+    name: "light-balanced",
+    hero: 95,
+    scene: 90,
+    asset: 90,
+    portrait: 93,
+    technical: 92,
+    maxWidths: { hero: 1800, scene: 1500, asset: 1400, portrait: 1200, technical: 1800 },
+    layoutMaxWidths: { five: 560, four: 820, three: 900, two: 1250 },
+    flattenAlpha: true,
+  },
+  {
+    name: "light-compact",
+    hero: 94,
+    scene: 88,
+    asset: 88,
+    portrait: 92,
+    technical: 89,
+    maxWidths: { hero: 1650, scene: 1250, asset: 1100, portrait: 1000, technical: 1500 },
+    layoutMaxWidths: { five: 480, four: 700, three: 760, two: 1000 },
+    flattenAlpha: true,
+  },
+];
+
 const browserCandidates = [
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
@@ -202,50 +239,83 @@ function collectFolderImages(folder) {
 
 async function loadPdfExpectations() {
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const chapters = Object.entries(manifest.chapters ?? {});
-  const websiteImages = chapters.flatMap(([, folder]) =>
-    collectFolderImages(folder),
+  const chapter = (name) => manifest.chapters?.[name];
+  const vegetation = chapter("植被全流程与Billboard制作");
+  const modular = chapter("模块化建筑与道具");
+  const pcg = chapter("岩石苔藓PCG系统");
+  const propAiFolder = modular?.children?.find(
+    (folder) => folder.name?.includes("道具AI") && folder.name?.includes("管线"),
   );
-  const pdfImages = chapters
-    .filter(([chapterName]) => !excludedPdfChapterNames.has(chapterName))
-    .flatMap(([, folder]) => collectFolderImages(folder));
-  const vegetationChapter = chapters
-    .map(([, folder]) => folder)
-    .find((folder) => folder.name?.includes("Billboard"));
-  const stepFiveFolder = vegetationChapter?.children?.find(
-    (folder) => folder.sortValue === 5,
-  );
-  const stepFiveImages = imagesInFolder(stepFiveFolder);
-  const expectedStepOrder = Array.from(
-    { length: 14 },
-    (_, index) => index + 1,
-  );
-  const actualStepOrder = stepFiveImages.map(
-    (file) =>
-      file.sortValue ??
-      Number(file.name.match(/^(\d+)/)?.[1] ?? -1),
-  );
-
-  if (
-    actualStepOrder.length !== expectedStepOrder.length ||
-    actualStepOrder.some(
-      (value, index) => value !== expectedStepOrder[index],
+  const vegetationFolders = (vegetation?.children ?? [])
+    .filter(
+      (folder) =>
+        Number.isFinite(folder.sortValue) &&
+        folder.sortValue >= 0 &&
+        folder.sortValue <= 18,
     )
-  ) {
-    throw new Error(
-      `The current manifest does not contain ZB step images 1-14 in order: ${actualStepOrder.join(", ")}`,
-    );
-  }
+    .sort((left, right) => left.sortValue - right.sortValue);
+  const pcgAssetFolder = pcg?.children?.find((folder) => folder.sortValue === 7);
+  const pcgResultFolder = pcg?.children?.find((folder) => folder.sortValue === 8);
+
+  const pdfImages = [
+    ...imagesInFolder(chapter("主视觉封面")),
+    ...imagesInFolder(chapter("个人简介")),
+    ...imagesInFolder(chapter("最强静帧")),
+    ...imagesInFolder(chapter("项目概览与个人职责")),
+    ...imagesInFolder(chapter("规划与跑图路线")),
+    ...imagesInFolder(modular),
+    ...imagesInFolder(propAiFolder),
+    ...imagesInFolder(chapter("程序化材质与场景应用")),
+    ...imagesInFolder(chapter("SD节点展示")),
+    ...vegetationFolders.flatMap(imagesInFolder),
+    ...imagesInFolder(pcg),
+    ...imagesInFolder(pcgAssetFolder),
+    ...imagesInFolder(pcgResultFolder),
+    ...imagesInFolder(chapter("场景静帧")),
+  ];
+  const vegetationStepOrders = Object.fromEntries(
+    Array.from({ length: 17 }, (_, index) => index + 1).map((step) => {
+      const folder = vegetationFolders.find((candidate) => candidate.sortValue === step);
+      return [
+        String(step),
+        imagesInFolder(folder).map(
+          (file) =>
+            file.sortValue ??
+            Number(file.name.match(/^(\d+)/)?.[1] ?? -1),
+        ),
+      ];
+    }),
+  );
 
   return {
     generatedAt: manifest.generatedAt ?? null,
-    websiteImageCount: websiteImages.length,
+    websiteImageCount: pdfImages.length,
     pdfImageCount: pdfImages.length,
-    expectedSectionTitles,
+    expectedChapterOrder,
     expectedVegetationTitle,
     forbiddenVegetationTitles,
-    stepFiveFolderName: stepFiveFolder.name,
-    stepFiveOrder: expectedStepOrder,
+    vegetationStepOrders,
+    propAiImageCount: imagesInFolder(propAiFolder).length,
+    leafNormalImageCount: imagesInFolder(
+      vegetationFolders.find((folder) => folder.sortValue === 11),
+    ).length,
+    aiFoliageReferenceCount: imagesInFolder(
+      vegetationFolders.find((folder) => folder.sortValue === 9),
+    ).length,
+    pcgProcessImageCount: imagesInFolder(pcg).filter(
+      (file) => file.sortValue !== null && file.sortValue <= 6,
+    ).length,
+    pcgAssetImageCount: imagesInFolder(pcgAssetFolder).length,
+    pcgResultImageCount: imagesInFolder(pcgResultFolder).length,
+    selectedStillsImageCount: imagesInFolder(chapter("最强静帧")).length,
+    materialsImageCount: imagesInFolder(chapter("程序化材质与场景应用")).length,
+    sdNodeImageCount: imagesInFolder(chapter("SD节点展示")).length,
+    speedtreePageImageCounts: (() => {
+      const speedtreeCount = imagesInFolder(
+        vegetationFolders.find((folder) => folder.sortValue === 14),
+      ).length;
+      return [Math.ceil(speedtreeCount / 2), Math.floor(speedtreeCount / 2)].filter(Boolean);
+    })(),
   };
 }
 
@@ -358,85 +428,153 @@ async function waitForPdfView(page, expectations) {
 
   const status = await page.evaluate(async (expected) => {
     await document.fonts.ready;
-    const images = Array.from(document.querySelectorAll("img"));
-    const visibleText =
-      document.querySelector(".portfolio-pdf")?.textContent ?? "";
-    const sectionTitles = Array.from(
-      document.querySelectorAll(".pdf-section-header h2"),
-      (heading) => heading.textContent?.trim() ?? "",
-    );
-    const stepFiveCards = Array.from(
-      document.querySelectorAll(
-        '.pdf-process-step[data-pdf-step="5"] .pdf-media-card',
-      ),
-    );
-    const stepFiveOrder = stepFiveCards.map((card) =>
-      Number(card.getAttribute("data-sort-value")),
-    );
+    const images = Array.from(document.querySelectorAll(".portfolio-pdf img"));
+    const pages = Array.from(document.querySelectorAll(".pdf-page"));
+    const visibleText = document.querySelector(".portfolio-pdf")?.textContent ?? "";
     const failedImages = images
       .filter((image) => !image.complete || !image.naturalWidth)
-      .map(
-        (image) =>
-          image.dataset.pdfSource ??
-          image.currentSrc ??
-          image.src,
+      .map((image) => image.dataset.pdfSource ?? image.currentSrc ?? image.src);
+    const pageKindCounts = pages.reduce((counts, pdfPage) => {
+      const kind = pdfPage.getAttribute("data-pdf-page-kind") ?? "unknown";
+      counts[kind] = (counts[kind] ?? 0) + 1;
+      return counts;
+    }, {});
+    const chapters = pages
+      .map((pdfPage) => pdfPage.getAttribute("data-pdf-chapter"))
+      .filter(Boolean);
+    const pageLabels = pages.map(
+      (pdfPage) => pdfPage.getAttribute("data-pdf-page-label") ?? "未命名页面",
+    );
+    const emptyPages = pages
+      .filter(
+        (pdfPage) =>
+          !pdfPage.querySelector("img") &&
+          (pdfPage.textContent?.trim().length ?? 0) < 3,
+      )
+      .map((pdfPage) => pdfPage.getAttribute("data-pdf-page-label") ?? "未命名页面");
+    const overflowPages = pages
+      .filter(
+        (pdfPage) =>
+          pdfPage.scrollWidth > pdfPage.clientWidth + 1 ||
+          pdfPage.scrollHeight > pdfPage.clientHeight + 1,
+      )
+      .map((pdfPage) => ({
+        label: pdfPage.getAttribute("data-pdf-page-label") ?? "未命名页面",
+        width: [pdfPage.clientWidth, pdfPage.scrollWidth],
+        height: [pdfPage.clientHeight, pdfPage.scrollHeight],
+      }));
+    const vegetationStepOrders = Object.fromEntries(
+      Object.keys(expected.vegetationStepOrders).map((step) => [
+        step,
+        Array.from(
+          document.querySelectorAll(
+            `.pdf-page[data-pdf-step="${step}"] .pdf-media-frame`,
+          ),
+        ).map((frame) => Number(frame.getAttribute("data-sort-value"))),
+      ]),
+    );
+
+    const portrait = document.querySelector('[data-pdf-portrait="true"] img');
+    const portraitRect = portrait?.getBoundingClientRect();
+    const imageFitErrors = images
+      .filter((image) => getComputedStyle(image).objectFit !== "contain")
+      .map((image) => image.dataset.pdfSource ?? image.currentSrc ?? image.src);
+    const imageBoundsErrors = images
+      .filter((image) => {
+        const imageRect = image.getBoundingClientRect();
+        const pageRect = image.closest(".pdf-page")?.getBoundingClientRect();
+        if (!pageRect || !image.naturalWidth || !image.naturalHeight) return true;
+        const scale = Math.min(
+          imageRect.width / image.naturalWidth,
+          imageRect.height / image.naturalHeight,
+        );
+        const renderedWidth = image.naturalWidth * scale;
+        const renderedHeight = image.naturalHeight * scale;
+        const renderedLeft = imageRect.left + (imageRect.width - renderedWidth) / 2;
+        const renderedTop = imageRect.top + (imageRect.height - renderedHeight) / 2;
+        return renderedLeft < pageRect.left - 1 || renderedTop < pageRect.top - 1 || renderedLeft + renderedWidth > pageRect.right + 1 || renderedTop + renderedHeight > pageRect.bottom + 1;
+      })
+      .map((image) => image.dataset.pdfSource ?? image.currentSrc ?? image.src);
+    const pageImageCounts = (selector) =>
+      Array.from(document.querySelectorAll(selector)).map(
+        (pdfPage) => pdfPage.querySelectorAll("img").length,
       );
 
     return {
       ready: window.__PORTFOLIO_PDF_READY__ === true,
-      errors: [
-        ...new Set([
-          ...(window.__PORTFOLIO_PDF_ERRORS__ ?? []),
-          ...failedImages,
-        ]),
-      ],
+      errors: [...new Set([...(window.__PORTFOLIO_PDF_ERRORS__ ?? []), ...failedImages])],
       imageCount: images.length,
+      pageCount: pages.length,
+      pageKindCounts,
+      pageLabels,
+      chapters,
+      emptyPages,
+      overflowPages,
+      vegetationStepOrders,
       videoCount: document.querySelectorAll("video").length,
       iframeCount: document.querySelectorAll("iframe").length,
       navigationCount: document.querySelectorAll("nav, .navigation").length,
       buttonCount: document.querySelectorAll("button").length,
       fontStatus: document.fonts.status,
-      sectionTitles,
-      stepFiveOrder,
-      hasExpectedVegetationTitle: visibleText.includes(
-        expected.expectedVegetationTitle,
+      propAiImageCount: document.querySelectorAll(".pdf-page--ai-media img").length,
+      leafNormalImageCount: document.querySelectorAll(
+        '.pdf-page[data-pdf-step="11"] .pdf-leaf-normal-grid img',
+      ).length,
+      aiFoliageReferenceCount: document.querySelectorAll(
+        '.pdf-page[data-pdf-step="9"] img',
+      ).length,
+      pcgProcessImageCount: document.querySelectorAll(
+        '[data-pdf-page-label^="PCG生成与过滤过程"] img',
+      ).length,
+      pcgAssetImageCount: document.querySelectorAll(
+        '[data-pdf-page-label^="苔藓资产制作流程"] img',
+      ).length,
+      pcgResultImageCount: document.querySelectorAll(
+        '[data-pdf-page-label^="PCG最终场景应用"] img',
+      ).length,
+      capabilityCount: document.querySelectorAll(".pdf-capabilities li").length,
+      portraitVisible: Boolean(
+        portrait && portrait.naturalWidth && portraitRect && portraitRect.width > 1 && portraitRect.height > 1,
       ),
+      portraitSource: portrait?.dataset.pdfSource ?? null,
+      imageFitErrors,
+      imageBoundsErrors,
+      selectedStillsTitleImageCount: document.querySelector('[data-pdf-page-label="主要静帧标题"]')?.querySelectorAll("img").length ?? -1,
+      selectedStillsPageImageCounts: pageImageCounts('[data-pdf-page-label^="主要静帧 "]'),
+      materialsTitleImageCount: document.querySelector('[data-pdf-page-label="程序化材质与场景应用标题"]')?.querySelectorAll("img").length ?? -1,
+      materialsPageImageCounts: pageImageCounts('[data-pdf-page-label^="程序化材质与场景应用 "]'),
+      sdPageImageCounts: pageImageCounts('[data-pdf-page-label="Substance Designer节点"]'),
+      vegetationFlowPageCount: document.querySelectorAll('[data-pdf-page-label="植被AI辅助资产管线"]').length,
+      vegetationPhaseCount: document.querySelectorAll('[data-pdf-page-label="植被AI辅助资产管线"] [data-pdf-vegetation-phase]').length,
+      speedtreePageImageCounts: pageImageCounts('.pdf-page--speedtree'),
+      pcgCombinedPageImageCounts: pageImageCounts('[data-pdf-page-label="PCG生成与过滤过程"]'),
+      pcgFlowStepCount: document.querySelectorAll('[data-pdf-page-label="PCG生成与过滤过程"] .pdf-pipeline-board li').length,
+      mossAssetPageImageCounts: pageImageCounts('[data-pdf-page-label="苔藓资产制作流程"]'),
+      hasWebsiteLink: Boolean(
+        document.querySelector('.pdf-contact a[href="https://zhuangsongyuan.online"]'),
+      ),
+      hasExpectedVegetationTitle: visibleText.includes(expected.expectedVegetationTitle),
       forbiddenVegetationTitles: expected.forbiddenVegetationTitles.filter(
         (title) => visibleText.includes(title),
       ),
       bvids: visibleText.match(/BV[0-9A-Za-z]{10}/g) ?? [],
-      variant:
-        document.querySelector(".portfolio-pdf")?.getAttribute(
-          "data-pdf-variant",
-        ) ?? "unknown",
+      variant: document.querySelector(".portfolio-pdf")?.getAttribute("data-pdf-variant") ?? "unknown",
     };
   }, expectations);
 
   if (!status.ready || status.errors.length) {
-    throw new Error(
-      `PDF view contains failed images:\n${status.errors.join("\n")}`,
-    );
-  }
-  if (status.imageCount < 1) {
-    throw new Error("PDF view did not render any images.");
+    throw new Error(`PDF view contains failed images:\n${status.errors.join("\n")}`);
   }
   if (status.imageCount !== expectations.pdfImageCount) {
     throw new Error(
       `PDF image count mismatch: expected ${expectations.pdfImageCount}, rendered ${status.imageCount}.`,
     );
   }
-  if (
-    JSON.stringify(status.sectionTitles) !==
-    JSON.stringify(expectations.expectedSectionTitles)
-  ) {
-    throw new Error(
-      `PDF section order mismatch:\n${status.sectionTitles.join("\n")}`,
-    );
+  if (JSON.stringify(status.chapters) !== JSON.stringify(expectations.expectedChapterOrder)) {
+    throw new Error(`PDF chapter order mismatch:\n${status.chapters.join("\n")}`);
   }
   if (!status.hasExpectedVegetationTitle) {
-    throw new Error(
-      `The current vegetation title is missing: ${expectations.expectedVegetationTitle}`,
-    );
+    throw new Error(`The current vegetation title is missing: ${expectations.expectedVegetationTitle}`);
   }
   if (status.forbiddenVegetationTitles.length) {
     throw new Error(
@@ -444,31 +582,61 @@ async function waitForPdfView(page, expectations) {
     );
   }
   if (
-    JSON.stringify(status.stepFiveOrder) !==
-    JSON.stringify(expectations.stepFiveOrder)
+    JSON.stringify(status.vegetationStepOrders) !==
+    JSON.stringify(expectations.vegetationStepOrders)
   ) {
     throw new Error(
-      `ZB step image order mismatch: ${status.stepFiveOrder.join(", ")}`,
+      `Vegetation step order mismatch: ${JSON.stringify(status.vegetationStepOrders)}`,
     );
+  }
+  for (const key of [
+    "propAiImageCount",
+    "leafNormalImageCount",
+    "aiFoliageReferenceCount",
+    "pcgProcessImageCount",
+    "pcgAssetImageCount",
+    "pcgResultImageCount",
+  ]) {
+    if (status[key] !== expectations[key]) {
+      throw new Error(`${key} mismatch: expected ${expectations[key]}, rendered ${status[key]}.`);
+    }
+  }
+  if (status.capabilityCount !== 5 || !status.hasWebsiteLink || !status.portraitVisible) {
+    throw new Error(`Latest about/contact content is incomplete: ${JSON.stringify(status)}`);
+  }
+  if (status.imageFitErrors.length || status.imageBoundsErrors.length) {
+    throw new Error(
+      `PDF images are cropped or outside page bounds: ${JSON.stringify({ fit: status.imageFitErrors, bounds: status.imageBoundsErrors })}`,
+    );
+  }
+  const expectedSingleImagePages = (count) => Array.from({ length: count }, () => 1);
+  if (
+    status.selectedStillsTitleImageCount !== 0 ||
+    JSON.stringify(status.selectedStillsPageImageCounts) !== JSON.stringify(expectedSingleImagePages(expectations.selectedStillsImageCount)) ||
+    status.materialsTitleImageCount !== 0 ||
+    JSON.stringify(status.materialsPageImageCounts) !== JSON.stringify(expectedSingleImagePages(expectations.materialsImageCount)) ||
+    JSON.stringify(status.sdPageImageCounts) !== JSON.stringify([expectations.sdNodeImageCount]) ||
+    status.vegetationFlowPageCount !== 1 ||
+    status.vegetationPhaseCount !== 2 ||
+    JSON.stringify(status.speedtreePageImageCounts) !== JSON.stringify(expectations.speedtreePageImageCounts) ||
+    JSON.stringify(status.pcgCombinedPageImageCounts) !== JSON.stringify([expectations.pcgProcessImageCount]) ||
+    status.pcgFlowStepCount !== 6 ||
+    JSON.stringify(status.mossAssetPageImageCounts) !== JSON.stringify([expectations.pcgAssetImageCount])
+  ) {
+    throw new Error(`Targeted PDF layout validation failed: ${JSON.stringify(status)}`);
   }
   if (status.bvids.length) {
+    throw new Error(`The PDF view contains Bilibili identifiers: ${status.bvids.join(", ")}`);
+  }
+  if (status.videoCount || status.iframeCount || status.navigationCount || status.buttonCount) {
+    throw new Error(`PDF view contains forbidden interactive media: ${JSON.stringify(status)}`);
+  }
+  if (status.emptyPages.length || status.overflowPages.length) {
     throw new Error(
-      `The PDF view contains Bilibili identifiers: ${status.bvids.join(", ")}`,
+      `PDF pages are empty or overflow: ${JSON.stringify({ empty: status.emptyPages, overflow: status.overflowPages })}`,
     );
   }
-  if (
-    status.videoCount ||
-    status.iframeCount ||
-    status.navigationCount ||
-    status.buttonCount
-  ) {
-    throw new Error(
-      `PDF view contains forbidden interactive media: ${JSON.stringify(
-        status,
-      )}`,
-    );
-  }
-
+  if (status.pageCount < 1) throw new Error("PDF view did not render any pages.");
   return status;
 }
 
@@ -518,8 +686,17 @@ async function prepareEmailImages(page, profile) {
 
       const sourceWidth = image.naturalWidth;
       const sourceHeight = image.naturalHeight;
-      const maximumWidth =
+      const layoutType =
+        image.closest("[data-pdf-layout]")?.getAttribute("data-pdf-layout") ??
+        "stack";
+      const contentMaximumWidth =
         qualityProfile.maxWidths?.[contentType] ?? sourceWidth;
+      const layoutMaximumWidth =
+        qualityProfile.layoutMaxWidths?.[layoutType] ?? sourceWidth;
+      const maximumWidth = Math.min(
+        contentMaximumWidth,
+        layoutMaximumWidth,
+      );
       const width = Math.min(sourceWidth, maximumWidth);
       const height = Math.max(
         1,
@@ -577,7 +754,14 @@ async function prepareEmailImages(page, profile) {
         continue;
       }
 
-      if (hasAlpha) {
+      if (hasAlpha && qualityProfile.flattenAlpha) {
+        context.globalCompositeOperation = "destination-over";
+        context.fillStyle = "#181818";
+        context.fillRect(0, 0, width, height);
+        context.globalCompositeOperation = "source-over";
+      }
+
+      if (hasAlpha && !qualityProfile.flattenAlpha) {
         records.push({
           originalPath: image.dataset.originalPath ?? "",
           sectionId,
@@ -687,29 +871,61 @@ async function prepareEmailImages(page, profile) {
   }, profile);
 }
 
+const loadedPdfPages = new WeakSet();
+
+async function preparePdfDom(page) {
+  if (!loadedPdfPages.has(page)) {
+    await page.goto(
+      `${previewUrl}?portfolioPdf=1&email=1&emailHighQuality=1`,
+      { waitUntil: "networkidle0", timeout: 180_000 },
+    );
+    const status = await waitForPdfView(page, pdfExpectations);
+    await page.evaluate(() => {
+      window.__PORTFOLIO_PDF_ORIGINAL_IMAGES__ = Array.from(
+        document.querySelectorAll(".portfolio-pdf img"),
+      ).map((image) => ({
+        src: image.getAttribute("src"),
+        srcset: image.getAttribute("srcset"),
+      }));
+    });
+    loadedPdfPages.add(page);
+    return status;
+  }
+
+  await page.evaluate(async () => {
+    const images = Array.from(document.querySelectorAll(".portfolio-pdf img"));
+    const originals = window.__PORTFOLIO_PDF_ORIGINAL_IMAGES__ ?? [];
+    if (images.length !== originals.length) {
+      throw new Error("PDF image source cache no longer matches the document.");
+    }
+    await Promise.all(
+      images.map(async (image, index) => {
+        if (image.src.startsWith("blob:")) URL.revokeObjectURL(image.src);
+        const original = originals[index];
+        if (original.src) image.setAttribute("src", original.src);
+        if (original.srcset) image.setAttribute("srcset", original.srcset);
+        else image.removeAttribute("srcset");
+        await image.decode();
+      }),
+    );
+  });
+  return waitForPdfView(page, pdfExpectations);
+}
+
 async function exportVariant(page, {
-  emailMode,
-  emailHighQuality = false,
   emailProfile = null,
   destination,
 }) {
-  const url = `${previewUrl}?portfolioPdf=1${
-    emailMode ? "&email=1" : ""
-  }${emailHighQuality ? "&emailHighQuality=1" : ""}`;
-
-  await page.goto(url, {
-    waitUntil: "networkidle0",
-    timeout: 180_000,
-  });
-  const status = await waitForPdfView(page, pdfExpectations);
+  const status = await preparePdfDom(page);
   const emailImagePreparation = emailProfile
     ? await prepareEmailImages(page, emailProfile)
     : null;
 
+  await mkdir(path.dirname(destination), { recursive: true });
   await page.pdf({
     path: destination,
-    format: "A4",
-    landscape: true,
+    width: "13.333333in",
+    height: "7.5in",
     printBackground: true,
     preferCSSPageSize: true,
     displayHeaderFooter: false,
@@ -733,7 +949,7 @@ async function exportVariant(page, {
 
 async function exportEmailCandidate(page, profile) {
   const destination = path.join(
-    emailCandidateDirectory,
+    candidateDirectory,
     `email-${profile.name}.pdf`,
   );
   const result = await exportVariant(page, {
@@ -743,7 +959,7 @@ async function exportEmailCandidate(page, profile) {
     destination,
   });
   console.log(
-    `EMAIL_PDF_CANDIDATE ${JSON.stringify({
+    `HIGH_PDF_CANDIDATE ${JSON.stringify({
       profile: profile.name,
       sizeBytes: result.sizeBytes,
       sizeMiB: result.sizeBytes / mebibyte,
@@ -771,88 +987,133 @@ function chooseEmailCandidate(candidates) {
   )[0];
 }
 
-async function exportHighQualityEmailPdf(page) {
-  await rm(emailCandidateDirectory, {
-    recursive: true,
-    force: true,
-  });
-  await mkdir(emailCandidateDirectory, { recursive: true });
+async function exportHighQualityPdf(page) {
+  await rm(candidateDirectory, { recursive: true, force: true });
+  await mkdir(candidateDirectory, { recursive: true });
 
   const candidates = [];
   try {
-    const high = await exportEmailCandidate(
-      page,
-      emailProfiles.high,
+    const natural = await exportVariant(page, {
+      emailMode: false,
+      destination: path.join(candidateDirectory, "high-natural.pdf"),
+    });
+    candidates.push({ ...natural, profile: "natural-high", additionalLossyCompression: false });
+    console.log(
+      `HIGH_PDF_CANDIDATE ${JSON.stringify({
+        profile: "natural-high",
+        sizeBytes: natural.sizeBytes,
+        sizeMiB: natural.sizeBytes / mebibyte,
+        additionalLossyCompression: false,
+      })}`,
     );
-    candidates.push(high);
 
-    if (high.sizeBytes < emailPreferredMinimumBytes) {
-      const ultra = await exportEmailCandidate(
-        page,
-        emailProfiles.ultra,
-      );
-      candidates.push(ultra);
-      if (ultra.sizeBytes < emailAcceptableMinimumBytes) {
-        const hybridStills = await exportEmailCandidate(
-          page,
-          emailProfiles.hybridStills,
-        );
-        candidates.push(hybridStills);
-        if (hybridStills.sizeBytes > emailMaximumBytes) {
-          candidates.push(
-            await exportEmailCandidate(
-              page,
-              emailProfiles.hybridCoreStills,
-            ),
-          );
-        }
-      }
-    } else if (high.sizeBytes > emailPreferredMaximumBytes) {
-      candidates.push(
-        await exportEmailCandidate(page, emailProfiles.balanced),
-      );
+    let selected = candidates[0];
+    if (selected.sizeBytes > emailMaximumBytes) {
+      const adjusted = await exportEmailCandidate(page, emailProfiles.ultra);
+      selected = {
+        ...adjusted,
+        profile: "ultra",
+        additionalLossyCompression: true,
+      };
+      candidates.push(selected);
     }
 
-    let selected = chooseEmailCandidate(candidates);
-    if (!selected) {
-      const allTooLarge = candidates.every(
-        (candidate) => candidate.sizeBytes > emailMaximumBytes,
-      );
-      if (allTooLarge) {
-        candidates.push(
-          await exportEmailCandidate(page, emailProfiles.safe),
-        );
-      }
-      selected = chooseEmailCandidate(candidates);
-    }
-
-    if (!selected) {
+    if (selected.sizeBytes > emailMaximumBytes) {
       throw new Error(
-        `No high-quality email PDF candidate was within 85-100 MiB: ${candidates
+        `The high-quality PDF still exceeds 100 MiB after one adjustment: ${(selected.sizeBytes / mebibyte).toFixed(2)} MiB.`,
+      );
+    }
+
+    await copyFile(selected.path, highPdfPath);
+    const finalStats = await stat(highPdfPath);
+    return {
+      ...selected,
+      path: highPdfPath,
+      sizeBytes: finalStats.size,
+      adjustmentRounds: candidates.length - 1,
+      candidates: candidates.map((candidate) => ({
+        profile: candidate.profile,
+        sizeBytes: candidate.sizeBytes,
+        sizeMiB: candidate.sizeBytes / mebibyte,
+        additionalLossyCompression:
+          candidate.additionalLossyCompression ?? true,
+      })),
+    };
+  } finally {
+    await rm(candidateDirectory, { recursive: true, force: true });
+  }
+}
+
+async function exportLightPdf(page) {
+  const preferredMinimumBytes = 17 * mebibyte;
+  const preferredMaximumBytes = 19.8 * mebibyte;
+  const maximumBytes = 20 * mebibyte;
+  const targetBytes = 18.5 * mebibyte;
+
+  await rm(candidateDirectory, { recursive: true, force: true });
+  await mkdir(candidateDirectory, { recursive: true });
+
+  const candidates = [];
+  try {
+    const profiles = lightProfiles.slice(0, 3);
+    for (const profile of profiles) {
+      const destination = path.join(candidateDirectory, `${profile.name}.pdf`);
+      const result = await exportVariant(page, {
+        emailMode: true,
+        emailHighQuality: true,
+        emailProfile: profile,
+        destination,
+      });
+      candidates.push({ ...result, profile: profile.name });
+      console.log(
+        `LIGHT_PDF_CANDIDATE ${JSON.stringify({
+          profile: profile.name,
+          sizeBytes: result.sizeBytes,
+          sizeMiB: result.sizeBytes / mebibyte,
+          imagePreparation: result.emailImagePreparation,
+        })}`,
+      );
+
+      if (result.sizeBytes <= preferredMaximumBytes) break;
+    }
+
+    const underLimit = candidates.filter(
+      (candidate) => candidate.sizeBytes < maximumBytes,
+    );
+    if (!underLimit.length) {
+      throw new Error(
+        `No lightweight PDF candidate is below 20 MiB: ${candidates
           .map(
             (candidate) =>
-              `${candidate.profile}=${(
-                candidate.sizeBytes / mebibyte
-              ).toFixed(2)} MiB`,
+              `${candidate.profile}=${(candidate.sizeBytes / mebibyte).toFixed(2)} MiB`,
           )
           .join(", ")}`,
       );
     }
 
-    await copyFile(selected.path, emailPdfPath);
-    const finalStats = await stat(emailPdfPath);
-    if (finalStats.size > emailMaximumBytes) {
+    const preferred = underLimit.filter(
+      (candidate) => candidate.sizeBytes >= preferredMinimumBytes,
+    );
+    const pool = preferred.length ? preferred : underLimit;
+    const selected = pool.sort(
+      (left, right) =>
+        Math.abs(left.sizeBytes - targetBytes) -
+        Math.abs(right.sizeBytes - targetBytes),
+    )[0];
+
+    await copyFile(selected.path, lightPdfPath);
+    const finalStats = await stat(lightPdfPath);
+    if (finalStats.size >= maximumBytes) {
       throw new Error(
-        `The selected email PDF exceeds 100 MiB: ${(
-          finalStats.size / mebibyte
-        ).toFixed(2)} MiB`,
+        `The selected lightweight PDF is not strictly below 20 MiB: ${(finalStats.size / mebibyte).toFixed(2)} MiB`,
       );
     }
 
     return {
       ...selected,
-      path: emailPdfPath,
+      path: lightPdfPath,
       sizeBytes: finalStats.size,
+      adjustmentRounds: candidates.length - 1,
       candidates: candidates.map((candidate) => ({
         profile: candidate.profile,
         sizeBytes: candidate.sizeBytes,
@@ -860,10 +1121,7 @@ async function exportHighQualityEmailPdf(page) {
       })),
     };
   } finally {
-    await rm(emailCandidateDirectory, {
-      recursive: true,
-      force: true,
-    });
+    await rm(candidateDirectory, { recursive: true, force: true });
   }
 }
 
@@ -907,29 +1165,32 @@ try {
 
   const page = await browser.newPage();
   await page.setViewport({
-    width: 1684,
-    height: 1191,
+    width: 1920,
+    height: 1080,
     deviceScaleFactor: 1,
   });
   await page.emulateMediaType("print");
 
-  const primary = emailHighQualityOnly
-    ? null
-    : await exportVariant(page, {
-        emailMode: false,
-        destination: primaryPdfPath,
-      });
-  const email = await exportHighQualityEmailPdf(page);
+  const high = onlyLight ? null : await exportHighQualityPdf(page);
+  const light = onlyHigh ? null : await exportLightPdf(page);
+
+  if (
+    high &&
+    light &&
+    (high.pageCount !== light.pageCount || high.imageCount !== light.imageCount)
+  ) {
+    throw new Error(
+      `PDF variants are inconsistent: high=${high.pageCount}/${high.imageCount}, light=${light.pageCount}/${light.imageCount}.`,
+    );
+  }
 
   console.log(
     `PDF_EXPORT_RESULT ${JSON.stringify({
-      mode: emailHighQualityOnly
-        ? "email-high-quality"
-        : "primary",
+      mode: onlyHigh ? "90mb" : onlyLight ? "20mb" : "both",
       browserPath,
       expectations: pdfExpectations,
-      primary,
-      email,
+      high,
+      light,
     })}`,
   );
 } finally {

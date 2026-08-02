@@ -14,6 +14,9 @@ function folderByNumber(media: MediaFolder | undefined, folderNumber: number) {
 
 export function VegetationSection({ media }: { media?: MediaFolder }) {
   const ecosystemImages = imagesIn(folderByNumber(media, 0));
+  const ecosystemShowcaseImages = ecosystemImages.slice(0, 3);
+  const subsurfaceScatteringImages = ecosystemImages.slice(3, 6);
+  const finalEffectImages = imagesIn(folderByNumber(media, 18));
   const visibleSteps = vegetationSteps;
 
   return (
@@ -32,31 +35,6 @@ export function VegetationSection({ media }: { media?: MediaFolder }) {
       />
 
       <div className="process-list">
-        <article className="process-step vegetation-ecosystem-showcase">
-          <header className="process-step__header">
-            <span className="process-step__number">00</span>
-            <div>
-              <p className="eyebrow">ECOSYSTEM SHOWCASE</p>
-              <h3>生态系统展示</h3>
-              <p>展示完整植被资产体系在UE5实时环境中的生态层次、树种变化、次表面受光与整体场景表现。</p>
-            </div>
-          </header>
-          {ecosystemImages.length ? (
-            <ConfiguredMediaGroup
-              files={ecosystemImages}
-              config={galleryLayouts.vegetationEcosystem}
-              sectionId="vegetation-ecosystem-gallery"
-              altPrefix="植被生态系统展示："
-              itemCaption="植被生态系统与次表面受光效果。"
-              className="large-horizontal-gallery process-horizontal-gallery"
-            />
-          ) : (
-            <PlaceholderPanel
-              label="生态系统展示待补充"
-              detail="当前未读取到生态系统展示图片。"
-            />
-          )}
-        </article>
 
         {visibleSteps.map((step) => {
           const stepImages = imagesIn(folderByNumber(media, step.stepNumber));
@@ -101,6 +79,83 @@ export function VegetationSection({ media }: { media?: MediaFolder }) {
             </article>
           );
         })}
+
+        <article className="process-step vegetation-ecosystem-showcase">
+          <header className="process-step__header">
+            <span className="process-step__number" aria-hidden="true">—</span>
+            <div>
+              <p className="eyebrow">ECOSYSTEM SHOWCASE</p>
+              <h3>生态系统展示</h3>
+              <p>展示完整植被资产体系在UE5实时环境中的生态层次、树种变化、空间组合与整体场景表现。</p>
+            </div>
+          </header>
+          {ecosystemShowcaseImages.length ? (
+            <ConfiguredMediaGroup
+              files={ecosystemShowcaseImages}
+              config={galleryLayouts.vegetationEcosystem}
+              sectionId="vegetation-ecosystem-gallery"
+              altPrefix="植被生态系统展示："
+              itemCaption="完整植被资产体系的生态层次与场景表现。"
+              className="large-horizontal-gallery process-horizontal-gallery"
+            />
+          ) : (
+            <PlaceholderPanel
+              label="生态系统展示待补充"
+              detail="当前未读取到生态系统展示图片。"
+            />
+          )}
+        </article>
+
+        <article className="process-step vegetation-subsurface-showcase">
+          <header className="process-step__header">
+            <span className="process-step__number" aria-hidden="true">—</span>
+            <div>
+              <p className="eyebrow">VEGETATION SUBSURFACE SCATTERING</p>
+              <h3>植被次表面散射效果展示</h3>
+              <p>集中展示枫树、银杏与竹类植被在逆光及侧逆光条件下的次表面散射表现，强化叶片的透光层次、色彩变化与真实受光效果。</p>
+            </div>
+          </header>
+          {subsurfaceScatteringImages.length ? (
+            <ConfiguredMediaGroup
+              files={subsurfaceScatteringImages}
+              config={galleryLayouts.vegetationEcosystem}
+              sectionId="vegetation-subsurface-gallery"
+              altPrefix="植被次表面散射效果："
+              itemCaption="植被在逆光与侧逆光条件下的次表面散射表现。"
+              className="large-horizontal-gallery process-horizontal-gallery"
+            />
+          ) : (
+            <PlaceholderPanel
+              label="植被次表面散射效果待补充"
+              detail="当前未读取到植被次表面散射效果图片。"
+            />
+          )}
+        </article>
+
+        <article className="process-step vegetation-final-showcase">
+          <header className="process-step__header">
+            <span className="process-step__number">18</span>
+            <div>
+              <p className="eyebrow">FINAL EFFECT SHOWCASE</p>
+              <h3>最终效果展示</h3>
+            </div>
+          </header>
+          {finalEffectImages.length ? (
+            <ConfiguredMediaGroup
+              files={finalEffectImages}
+              config={galleryLayouts.vegetationSteps[18]}
+              sectionId="vegetation-final-effect-gallery"
+              altPrefix="植被最终效果展示："
+              itemCaption="植被资产最终效果。"
+              className="large-horizontal-gallery process-horizontal-gallery"
+            />
+          ) : (
+            <PlaceholderPanel
+              label="最终效果展示待补充"
+              detail="当前未读取到植被最终效果图片。"
+            />
+          )}
+        </article>
       </div>
     </section>
   );
